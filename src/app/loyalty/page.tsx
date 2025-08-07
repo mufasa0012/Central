@@ -35,7 +35,7 @@ export default function LoyaltyPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-start">
+      <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
         <div className="space-y-1">
           <h1 className="font-headline text-3xl font-bold tracking-tight">Loyalty Program</h1>
           <p className="text-muted-foreground">Manage your customer loyalty program here.</p>
@@ -47,7 +47,7 @@ export default function LoyaltyPage() {
               Add Member
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-[425px]">
+          <DialogContent className="sm:max-w-md">
             <DialogHeader>
               <DialogTitle>Add New Loyalty Member</DialogTitle>
               <DialogDescription>
@@ -93,28 +93,30 @@ export default function LoyaltyPage() {
           <CardDescription>A list of customers enrolled in the loyalty program.</CardDescription>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Customer ID</TableHead>
-                <TableHead>Name</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead className="text-right">Loyalty Points</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {loyaltyMembers.map((member) => (
-                <TableRow key={member.id}>
-                  <TableCell className="font-medium">{member.id}</TableCell>
-                  <TableCell>{member.name}</TableCell>
-                  <TableCell>{member.email}</TableCell>
-                  <TableCell className="text-right">
-                    <Badge variant="secondary">{member.points.toLocaleString()}</Badge>
-                  </TableCell>
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Customer ID</TableHead>
+                  <TableHead>Name</TableHead>
+                  <TableHead className="hidden sm:table-cell">Email</TableHead>
+                  <TableHead className="text-right">Loyalty Points</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {loyaltyMembers.map((member) => (
+                  <TableRow key={member.id}>
+                    <TableCell className="font-medium">{member.id}</TableCell>
+                    <TableCell>{member.name}</TableCell>
+                    <TableCell className="hidden sm:table-cell">{member.email}</TableCell>
+                    <TableCell className="text-right">
+                      <Badge variant="secondary">{member.points.toLocaleString()}</Badge>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
         </CardContent>
       </Card>
     </div>

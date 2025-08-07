@@ -96,10 +96,10 @@ export default function CashierPOSPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 md:space-y-6">
       <h1 className="font-headline text-3xl font-bold tracking-tight">Cashier POS</h1>
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-8 items-start">
-        <div className="xl:col-span-2">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+        <div className="lg:col-span-2">
           <Card className="mb-6">
             <CardContent className="p-4">
               <div className="relative">
@@ -117,7 +117,7 @@ export default function CashierPOSPage() {
             </CardContent>
           </Card>
 
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
             {filteredProducts.map((product) => (
               <Card 
                 key={product.id} 
@@ -132,14 +132,14 @@ export default function CashierPOSPage() {
                 </div>
                 <div className="p-3 bg-card">
                   <p className="font-semibold truncate">{product.name}</p>
-                  <p className="text-muted-foreground">${product.price.toFixed(2)}</p>
+                  <p className="text-sm text-muted-foreground">${product.price.toFixed(2)}</p>
                 </div>
               </Card>
             ))}
           </div>
         </div>
 
-        <div className="xl:col-span-1">
+        <div className="lg:col-span-1">
           <Card className="sticky top-8 shadow-lg">
             <CardHeader>
               <CardTitle className="font-headline text-2xl flex justify-between items-center">
@@ -173,7 +173,7 @@ export default function CashierPOSPage() {
                         Add Loyalty Customer
                       </Button>
                     </DialogTrigger>
-                    <DialogContent>
+                    <DialogContent className="sm:max-w-md">
                       <DialogHeader>
                         <DialogTitle>Find Loyalty Member</DialogTitle>
                       </DialogHeader>
@@ -203,7 +203,7 @@ export default function CashierPOSPage() {
                     </DialogContent>
                 </Dialog>
                 )}
-              <ScrollArea className="h-[300px] pr-4">
+              <ScrollArea className="h-[250px] md:h-[300px] pr-4">
                 {cart.length === 0 ? (
                   <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
                     <p>Your cart is empty</p>
@@ -212,22 +212,22 @@ export default function CashierPOSPage() {
                 ) : (
                   <div className="flex flex-col gap-4">
                     {cart.map((item) => (
-                      <div key={item.id} className="flex items-center gap-4">
-                        <Image src={item.image} alt={item.name} width={64} height={64} className="rounded-md" data-ai-hint={item.hint}/>
-                        <div className="flex-grow">
-                          <p className="font-medium">{item.name}</p>
-                          <div className="flex items-center gap-2 text-muted-foreground">
+                      <div key={item.id} className="flex items-center gap-3">
+                        <Image src={item.image} alt={item.name} width={48} height={48} className="rounded-md" data-ai-hint={item.hint}/>
+                        <div className="flex-grow overflow-hidden">
+                          <p className="font-medium truncate text-sm">{item.name}</p>
+                          <div className="flex items-center gap-1 text-muted-foreground">
                             <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => updateQuantity(item.id, item.quantity - 1)}>
                               <MinusCircle className="h-4 w-4" />
                             </Button>
-                            <span>{item.quantity}</span>
+                            <span className="text-sm">{item.quantity}</span>
                             <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => updateQuantity(item.id, item.quantity + 1)}>
                               <PlusCircle className="h-4 w-4" />
                             </Button>
                           </div>
                         </div>
-                        <p className="font-semibold">${(item.price * item.quantity).toFixed(2)}</p>
-                        <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-destructive h-8 w-8" onClick={() => removeFromCart(item.id)}>
+                        <p className="font-semibold text-sm">${(item.price * item.quantity).toFixed(2)}</p>
+                        <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-destructive h-7 w-7" onClick={() => removeFromCart(item.id)}>
                           <X className="h-4 w-4" />
                         </Button>
                       </div>
@@ -260,14 +260,15 @@ export default function CashierPOSPage() {
                 </>
               )}
             </CardContent>
+            {cart.length > 0 && (
             <CardFooter>
               <Dialog onOpenChange={(open) => !open && cart.length === 0}>
                 <DialogTrigger asChild>
-                  <Button size="lg" className="w-full text-lg" disabled={cart.length === 0}>
+                  <Button size="lg" className="w-full text-lg">
                     Charge ${total.toFixed(2)}
                   </Button>
                 </DialogTrigger>
-                <DialogContent className="sm:max-w-[425px]">
+                <DialogContent className="sm:max-w-sm">
                   <DialogHeader>
                     <DialogTitle className="font-headline text-2xl">Complete Payment</DialogTitle>
                   </DialogHeader>
@@ -315,6 +316,7 @@ export default function CashierPOSPage() {
                 </DialogContent>
               </Dialog>
             </CardFooter>
+            )}
           </Card>
         </div>
       </div>
