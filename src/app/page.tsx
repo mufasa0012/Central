@@ -121,7 +121,7 @@ export default function CashierPOSPage() {
 
   useEffect(() => {
     if(!isPaymentDialogOpen) {
-      setCashGiven("");
+      // Keep cashGiven when dialog is closed to show change on main screen
     }
   }, [isPaymentDialogOpen]);
 
@@ -132,72 +132,74 @@ export default function CashierPOSPage() {
   };
 
   return (
-    <div className="grid h-full grid-cols-1 gap-8 lg:grid-cols-3 items-start">
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 items-start h-full">
         {/* Products Section */}
-        <div className="lg:col-span-2 flex flex-col gap-6 h-full">
-          <h1 className="font-headline text-3xl font-bold tracking-tight">Cashier POS</h1>
-          <Card>
-            <CardContent className="p-4">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                <Input
-                  placeholder="Scan barcode or search products..."
-                  className="pl-10 h-12 text-lg"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                />
-                <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                  <ScanLine className="h-6 w-6 text-muted-foreground" />
+        <div className="lg:col-span-2 flex flex-col gap-6 h-full order-1 md:order-1">
+          <div className="flex-1 flex flex-col gap-6 min-h-0">
+            <h1 className="font-headline text-3xl font-bold tracking-tight">Cashier POS</h1>
+            <Card>
+              <CardContent className="p-4">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                  <Input
+                    placeholder="Scan barcode or search products..."
+                    className="pl-10 h-12 text-lg"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                  />
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                    <ScanLine className="h-6 w-6 text-muted-foreground" />
+                  </div>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
 
-          <div className="flex-1 min-h-0">
-            {isLoadingProducts ? (
-              <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
-                {[...Array(8)].map((_, i) => (
-                  <Card key={i} className="overflow-hidden">
-                    <div className="relative aspect-square bg-muted animate-pulse" />
-                    <div className="p-3 bg-card">
-                      <div className="space-y-2">
-                         <div className="h-4 bg-muted animate-pulse rounded-md" />
-                         <div className="h-3 w-1/2 bg-muted animate-pulse rounded-md" />
-                      </div>
-                    </div>
-                  </Card>
-                ))}
-              </div>
-            ) : (
-              <ScrollArea className="h-full">
-                <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4 pr-4">
-                  {filteredProducts.map((product) => (
-                    <Card 
-                      key={product.id} 
-                      className="overflow-hidden cursor-pointer hover:shadow-lg transition-shadow duration-200 group"
-                      onClick={() => addToCart(product)}
-                    >
-                      <div className="relative aspect-square">
-                         <Image src={product.image} alt={product.name} fill className="object-cover" data-ai-hint={product.hint} />
-                         <div className="absolute inset-0 bg-black/20 group-hover:bg-black/40 transition-colors duration-200 flex items-center justify-center">
-                            <PlusCircle className="h-10 w-10 text-white/70 group-hover:text-white transform group-hover:scale-110 transition-transform duration-200" />
-                         </div>
-                      </div>
+            <div className="flex-1 min-h-0">
+              {isLoadingProducts ? (
+                <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
+                  {[...Array(8)].map((_, i) => (
+                    <Card key={i} className="overflow-hidden">
+                      <div className="relative aspect-square bg-muted animate-pulse" />
                       <div className="p-3 bg-card">
-                        <p className="font-semibold truncate">{product.name} <span className="text-sm text-muted-foreground">({product.brand})</span></p>
-                        <p className="text-sm text-muted-foreground">KSH {product.price.toFixed(2)}</p>
+                        <div className="space-y-2">
+                           <div className="h-4 bg-muted animate-pulse rounded-md" />
+                           <div className="h-3 w-1/2 bg-muted animate-pulse rounded-md" />
+                        </div>
                       </div>
                     </Card>
                   ))}
                 </div>
-              </ScrollArea>
-            )}
+              ) : (
+                <ScrollArea className="h-full">
+                  <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4 pr-4">
+                    {filteredProducts.map((product) => (
+                      <Card 
+                        key={product.id} 
+                        className="overflow-hidden cursor-pointer hover:shadow-lg transition-shadow duration-200 group"
+                        onClick={() => addToCart(product)}
+                      >
+                        <div className="relative aspect-square">
+                           <Image src={product.image} alt={product.name} fill className="object-cover" data-ai-hint={product.hint} />
+                           <div className="absolute inset-0 bg-black/20 group-hover:bg-black/40 transition-colors duration-200 flex items-center justify-center">
+                              <PlusCircle className="h-10 w-10 text-white/70 group-hover:text-white transform group-hover:scale-110 transition-transform duration-200" />
+                           </div>
+                        </div>
+                        <div className="p-3 bg-card">
+                          <p className="font-semibold truncate">{product.name} <span className="text-sm text-muted-foreground">({product.brand})</span></p>
+                          <p className="text-sm text-muted-foreground">KSH {product.price.toFixed(2)}</p>
+                        </div>
+                      </Card>
+                    ))}
+                  </div>
+                </ScrollArea>
+              )}
+            </div>
           </div>
         </div>
 
         {/* Cart Section */}
-        <div className="lg:col-span-1 h-full flex flex-col">
-          <Card className="sticky top-8 shadow-lg flex-1 flex flex-col">
+        <div className="lg:col-span-1 h-full flex flex-col order-2 md:order-2">
+          <Card className="shadow-lg flex-1 flex flex-col">
             <CardHeader>
               <CardTitle className="font-headline text-2xl flex justify-between items-center">
                 Current Sale
@@ -294,7 +296,7 @@ export default function CashierPOSPage() {
               </ScrollArea>
               {cart.length > 0 && (
                 <>
-                  <Separator className="my-4" />
+                  <Separator className="my-2" />
                   <div className="space-y-2 text-sm">
                     <div className="flex justify-between">
                       <p>Subtotal</p>
@@ -309,6 +311,22 @@ export default function CashierPOSPage() {
                       <p>Total</p>
                       <p>KSH {total.toFixed(2)}</p>
                     </div>
+                     <div className="grid grid-cols-2 items-center gap-4 mt-4">
+                       <Label htmlFor="cash-given" className="text-right">Cash Given</Label>
+                       <Input 
+                        id="cash-given" 
+                        type="number" 
+                        placeholder="e.g. 5000" 
+                        value={cashGiven}
+                        onChange={(e) => setCashGiven(e.target.value)}
+                       />
+                    </div>
+                     {change > 0 && (
+                      <div className="flex justify-between text-lg font-bold text-accent pt-2">
+                        <p>Change</p>
+                        <p>KSH {change.toFixed(2)}</p>
+                      </div>
+                    )}
                   </div>
                 </>
               )}
@@ -334,35 +352,6 @@ export default function CashierPOSPage() {
                     <div className="py-4 text-center text-4xl font-bold tracking-tight">KSH {total.toFixed(2)}</div>
                     <TabsContent value="cash">
                       <div className="space-y-4">
-                        <div className="grid gap-2">
-                           <Label htmlFor="cash-given">Cash Given</Label>
-                           <Input 
-                            id="cash-given" 
-                            type="number" 
-                            placeholder="e.g. 5000" 
-                            value={cashGiven}
-                            onChange={(e) => setCashGiven(e.target.value)}
-                           />
-                        </div>
-                        <div className="flex gap-2">
-                          {[1000, 2000, 5000].map(amount => (
-                            <Button 
-                              key={amount}
-                              variant="secondary"
-                              className="flex-1"
-                              onClick={() => setCashGiven(amount.toString())}
-                             >
-                              {amount}
-                            </Button>
-                          ))}
-                           <Button 
-                              variant="secondary"
-                              className="flex-1"
-                              onClick={() => setCashGiven(Math.ceil(total).toString())}
-                             >
-                              Exact
-                            </Button>
-                        </div>
                         {change > 0 && (
                           <div className="text-center text-lg">
                             <p className="text-muted-foreground">Change due:</p>
@@ -370,7 +359,7 @@ export default function CashierPOSPage() {
                           </div>
                         )}
                          
-                        <Button className="w-full" size="lg" onClick={handleCompletePayment}>
+                        <Button className="w-full" size="lg" onClick={handleCompletePayment} disabled={parseFloat(cashGiven) < total}>
                           Confirm Payment
                         </Button>
                       </div>
@@ -401,3 +390,4 @@ export default function CashierPOSPage() {
       </div>
   );
 }
+
