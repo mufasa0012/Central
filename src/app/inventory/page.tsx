@@ -253,10 +253,10 @@ export default function InventoryPage() {
     const newProductData = {
         name: newProductName,
         brand: newProductBrand,
-        price: parseFloat(newProductPrice),
-        wholesalePrice: parseFloat(newProductWholesalePrice),
+        price: parseFloat(newProductPrice) || 0,
+        wholesalePrice: parseFloat(newProductWholesalePrice) || 0,
         category: newProductCategory,
-        stock: parseInt(newProductStock, 10),
+        stock: parseInt(newProductStock, 10) || 0,
         unit: newProductUnit,
         image: imageUrl,
         hint: `${newProductName.toLowerCase()} ${newProductBrand.toLowerCase()}`,
@@ -286,7 +286,7 @@ export default function InventoryPage() {
     setEditProductName(product.name);
     setEditProductBrand(product.brand);
     setEditProductPrice(product.price.toString());
-    setEditProductWholesalePrice(product.wholesalePrice.toString());
+    setEditProductWholesalePrice(product.wholesalePrice?.toString() ?? "");
     setEditProductCategory(product.category);
     setEditProductStock(product.stock.toString());
     setEditProductUnit(product.unit);
@@ -325,10 +325,10 @@ export default function InventoryPage() {
     const updatedProductData = {
       name: editProductName,
       brand: editProductBrand,
-      price: parseFloat(editProductPrice),
-      wholesalePrice: parseFloat(editProductWholesalePrice),
+      price: parseFloat(editProductPrice) || 0,
+      wholesalePrice: parseFloat(editProductWholesalePrice) || 0,
       category: editProductCategory,
-      stock: parseInt(editProductStock, 10),
+      stock: parseInt(editProductStock, 10) || 0,
       unit: editProductUnit,
       image: imageUrl,
       hint: `${editProductName.toLowerCase()} ${editProductBrand.toLowerCase()}`,
@@ -666,8 +666,8 @@ export default function InventoryPage() {
                       <Badge variant="outline">{product.category}</Badge>
                     </TableCell>
                     <TableCell className="hidden md:table-cell">{product.stock} {product.unit}</TableCell>
-                    <TableCell className="text-right">KSH {product.price.toFixed(2)}</TableCell>
-                    <TableCell className="text-right">KSH {product.wholesalePrice.toFixed(2)}</TableCell>
+                    <TableCell className="text-right">KSH {(product.price || 0).toFixed(2)}</TableCell>
+                    <TableCell className="text-right">KSH {(product.wholesalePrice || 0).toFixed(2)}</TableCell>
                      <TableCell>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
