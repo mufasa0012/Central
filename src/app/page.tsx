@@ -131,7 +131,7 @@ export default function CashierPOSPage() {
             </CardContent>
           </Card>
 
-          <div className="flex-1 overflow-y-auto">
+          <div className="flex-1 min-h-0">
             {isLoadingProducts ? (
               <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
                 {[...Array(8)].map((_, i) => (
@@ -147,26 +147,28 @@ export default function CashierPOSPage() {
                 ))}
               </div>
             ) : (
-              <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
-                {filteredProducts.map((product) => (
-                  <Card 
-                    key={product.id} 
-                    className="overflow-hidden cursor-pointer hover:shadow-lg transition-shadow duration-200 group"
-                    onClick={() => addToCart(product)}
-                  >
-                    <div className="relative aspect-square">
-                       <Image src={product.image} alt={product.name} fill className="object-cover" data-ai-hint={product.hint} />
-                       <div className="absolute inset-0 bg-black/20 group-hover:bg-black/40 transition-colors duration-200 flex items-center justify-center">
-                          <PlusCircle className="h-10 w-10 text-white/70 group-hover:text-white transform group-hover:scale-110 transition-transform duration-200" />
-                       </div>
-                    </div>
-                    <div className="p-3 bg-card">
-                      <p className="font-semibold truncate">{product.name} <span className="text-sm text-muted-foreground">({product.brand})</span></p>
-                      <p className="text-sm text-muted-foreground">KSH {product.price.toFixed(2)}</p>
-                    </div>
-                  </Card>
-                ))}
-              </div>
+              <ScrollArea className="h-full">
+                <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4 pr-4">
+                  {filteredProducts.map((product) => (
+                    <Card 
+                      key={product.id} 
+                      className="overflow-hidden cursor-pointer hover:shadow-lg transition-shadow duration-200 group"
+                      onClick={() => addToCart(product)}
+                    >
+                      <div className="relative aspect-square">
+                         <Image src={product.image} alt={product.name} fill className="object-cover" data-ai-hint={product.hint} />
+                         <div className="absolute inset-0 bg-black/20 group-hover:bg-black/40 transition-colors duration-200 flex items-center justify-center">
+                            <PlusCircle className="h-10 w-10 text-white/70 group-hover:text-white transform group-hover:scale-110 transition-transform duration-200" />
+                         </div>
+                      </div>
+                      <div className="p-3 bg-card">
+                        <p className="font-semibold truncate">{product.name} <span className="text-sm text-muted-foreground">({product.brand})</span></p>
+                        <p className="text-sm text-muted-foreground">KSH {product.price.toFixed(2)}</p>
+                      </div>
+                    </Card>
+                  ))}
+                </div>
+              </ScrollArea>
             )}
             </div>
         </div>
@@ -355,3 +357,5 @@ export default function CashierPOSPage() {
     </div>
   );
 }
+
+    
