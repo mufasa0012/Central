@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Image from "next/image";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import { products as initialProducts } from "@/lib/data";
 import { uploadImage } from "@/lib/actions";
 import { useToast } from "@/hooks/use-toast";
+import { suggestCategory } from "@/ai/flows/suggest-category-flow";
 
 
 type Product = typeof initialProducts[0];
@@ -24,6 +25,7 @@ export default function InventoryPage() {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [isSuggestingCategory, setIsSuggestingCategory] = useState(false);
   const { toast } = useToast();
   
   // State for the "Add Product" dialog
@@ -45,6 +47,25 @@ export default function InventoryPage() {
   const [editProductUnit, setEditProductUnit] = useState("");
   const [editProductImage, setEditProductImage] = useState<File | null>(null);
   const [editProductImagePreview, setEditProductImagePreview] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (newProductName.length > 3) {
+      const timer = setTimeout(async () => {
+        setIsSuggestingCategory(true);
+        try {
+          const result = await suggestCategory({ productName: newProductName });
+          if (result.category) {
+            setNewProductCategory(result.category);
+          }
+        } catch (error) {
+          console.error("Failed to suggest category:", error);
+        } finally {
+          setIsSuggestingCategory(false);
+        }
+      }, 500); // Debounce for 500ms
+      return () => clearTimeout(timer);
+    }
+  }, [newProductName]);
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>, isEditing: boolean) => {
     const file = e.target.files?.[0];
@@ -234,7 +255,10 @@ export default function InventoryPage() {
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="category" className="text-right">Category</Label>
-                <Input id="category" value={newProductCategory} onChange={(e) => setNewProductCategory(e.target.value)} className="col-span-3" placeholder="e.g. Grains" />
+                 <div className="relative col-span-3">
+                  <Input id="category" value={newProductCategory} onChange={(e) => setNewProductCategory(e.target.value)} placeholder="e.g. Grains" />
+                  {isSuggestingCategory && <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin" />}
+                </div>
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="stock" className="text-right">Stock</Label>
