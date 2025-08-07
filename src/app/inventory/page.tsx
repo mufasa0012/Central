@@ -15,9 +15,18 @@ import { products as initialProducts } from "@/lib/data";
 import { uploadImage } from "@/lib/actions";
 import { useToast } from "@/hooks/use-toast";
 import { suggestCategory } from "@/ai/flows/suggest-category-flow";
+import { generateProductImage } from "@/ai/flows/generate-product-image-flow";
 
 
 type Product = typeof initialProducts[0];
+
+// Helper function to convert data URI to File
+async function dataUriToFile(dataUrl: string, fileName: string): Promise<File> {
+    const res = await fetch(dataUrl);
+    const blob = await res.blob();
+    return new File([blob], fileName, { type: blob.type });
+}
+
 
 export default function InventoryPage() {
   const [products, setProducts] = useState(initialProducts);
@@ -26,6 +35,7 @@ export default function InventoryPage() {
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [isSuggestingCategory, setIsSuggestingCategory] = useState(false);
+  const [isGeneratingImage, setIsGeneratingImage] = useState(false);
   const { toast } = useToast();
   
   // State for the "Add Product" dialog
@@ -37,6 +47,7 @@ export default function InventoryPage() {
   const [newProductUnit, setNewProductUnit] = useState("");
   const [newProductImage, setNewProductImage] = useState<File | null>(null);
   const [newProductImagePreview, setNewProductImagePreview] = useState<string | null>(null);
+  const [generatedImageDataUri, setGeneratedImageDataUri] = useState<string | null>(null);
   
   // State for the "Edit Product" dialog
   const [editProductName, setEditProductName] = useState("");
@@ -67,6 +78,26 @@ export default function InventoryPage() {
     }
   }, [newProductName]);
 
+  useEffect(() => {
+    if (newProductName.length > 3 && newProductBrand.length > 2) {
+      const timer = setTimeout(async () => {
+        setIsGeneratingImage(true);
+        try {
+          const result = await generateProductImage({ productName: newProductName, brand: newProductBrand });
+          if (result.imageUrl) {
+            setNewProductImagePreview(result.imageUrl);
+            setGeneratedImageDataUri(result.imageUrl);
+          }
+        } catch (error) {
+          console.error("Failed to generate image:", error);
+        } finally {
+          setIsGeneratingImage(false);
+        }
+      }, 1000); // Debounce for 1s
+      return () => clearTimeout(timer);
+    }
+  }, [newProductName, newProductBrand]);
+
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>, isEditing: boolean) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -76,6 +107,7 @@ export default function InventoryPage() {
       } else {
         setNewProductImage(file);
         setNewProductImagePreview(URL.createObjectURL(file));
+        setGeneratedImageDataUri(null); // Clear generated image if user uploads one
       }
     }
   };
@@ -89,6 +121,7 @@ export default function InventoryPage() {
     setNewProductUnit("");
     setNewProductImage(null);
     setNewProductImagePreview(null);
+    setGeneratedImageDataUri(null);
     setIsAddDialogOpen(false);
   };
 
@@ -104,11 +137,27 @@ export default function InventoryPage() {
     
     setIsUploading(true);
     let imageUrl = "https://placehold.co/300x300";
+    let imageFileToUpload = newProductImage;
 
-    if (newProductImage) {
+    // If there's a generated image and the user hasn't uploaded a different one, use the generated one.
+    if (generatedImageDataUri && !newProductImage) {
+        try {
+            imageFileToUpload = await dataUriToFile(generatedImageDataUri, `${newProductName.replace(/\s+/g, '-')}.png`);
+        } catch (error) {
+             toast({
+                variant: "destructive",
+                title: "Image Processing Failed",
+                description: "Could not process the generated image.",
+            });
+            setIsUploading(false);
+            return;
+        }
+    }
+
+    if (imageFileToUpload) {
         try {
             const formData = new FormData();
-            formData.append("file", newProductImage);
+            formData.append("file", imageFileToUpload);
             const result = await uploadImage(formData);
             if (result.url) {
                 imageUrl = result.url;
@@ -228,7 +277,7 @@ export default function InventoryPage() {
                  <div className="col-span-3">
                    <Input id="image" type="file" className="hidden" onChange={(e) => handleImageChange(e, false)} accept="image/*"/>
                    <Label htmlFor="image" className="cursor-pointer">
-                        <div className="w-full aspect-video rounded-md border-2 border-dashed border-muted-foreground/50 flex flex-col items-center justify-center text-muted-foreground hover:bg-muted/50">
+                        <div className="w-full aspect-video rounded-md border-2 border-dashed border-muted-foreground/50 flex flex-col items-center justify-center text-muted-foreground hover:bg-muted/50 relative">
                            {newProductImagePreview ? (
                                 <Image src={newProductImagePreview} alt="Product preview" width={150} height={84} className="object-cover rounded-md"/>
                            ) : (
@@ -237,6 +286,12 @@ export default function InventoryPage() {
                                  <p>Upload Image</p>
                                 </>
                            )}
+                           {isGeneratingImage && (
+                                <div className="absolute inset-0 bg-background/80 flex flex-col items-center justify-center">
+                                    <Loader2 className="h-8 w-8 animate-spin text-primary"/>
+                                    <p className="text-sm text-muted-foreground mt-2">Generating Image...</p>
+                                </div>
+                            )}
                         </div>
                    </Label>
                  </div>
@@ -271,8 +326,8 @@ export default function InventoryPage() {
             </div>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={resetAddForm}>Cancel</Button>
-              <Button type="submit" onClick={handleAddProduct} disabled={isUploading}>
-                {isUploading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              <Button type="submit" onClick={handleAddProduct} disabled={isUploading || isGeneratingImage}>
+                {(isUploading || isGeneratingImage) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Save Product
               </Button>
             </DialogFooter>
