@@ -2,6 +2,8 @@
 
 import React, { useState, useMemo, useEffect } from "react";
 import Image from "next/image";
+import { collection, onSnapshot } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -9,29 +11,44 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogClose } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ScanLine, Search, PlusCircle, MinusCircle, Trash2, X, CreditCard, Landmark, Smartphone, UserPlus, Award } from "lucide-react";
+import { ScanLine, Search, PlusCircle, MinusCircle, Trash2, X, CreditCard, Landmark, Smartphone, UserPlus, Award, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
-import { products as initialProducts, loyaltyMembers as initialLoyaltyMembers } from "@/lib/data";
+import type { Product } from "@/lib/data";
+import { loyaltyMembers as initialLoyaltyMembers } from "@/lib/data";
 
-const products = initialProducts;
 const loyaltyMembers = initialLoyaltyMembers;
 
-type Product = typeof products[0];
 type CartItem = Product & { quantity: number };
 type LoyaltyCustomer = typeof loyaltyMembers[0];
 
 export default function CashierPOSPage() {
+  const [products, setProducts] = useState<Product[]>([]);
+  const [isLoadingProducts, setIsLoadingProducts] = useState(true);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [customerSearch, setCustomerSearch] = useState("");
   const [activeCustomer, setActiveCustomer] = useState<LoyaltyCustomer | null>(null);
-  const [isClient, setIsClient] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
-    setIsClient(true);
-  }, []);
+    const productsCollection = collection(db, "products");
+    const unsubscribe = onSnapshot(productsCollection, (snapshot) => {
+      const productsData = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })) as Product[];
+      setProducts(productsData);
+      setIsLoadingProducts(false);
+    }, (error) => {
+      console.error("Error fetching products:", error);
+      toast({
+        variant: "destructive",
+        title: "Failed to load products",
+        description: "Could not fetch product data from the database.",
+      });
+      setIsLoadingProducts(false);
+    });
+    return () => unsubscribe();
+  }, [toast]);
+  
 
   const addToCart = (product: Product) => {
     setCart((prevCart) => {
@@ -45,7 +62,7 @@ export default function CashierPOSPage() {
     });
   };
 
-  const updateQuantity = (productId: number, newQuantity: number) => {
+  const updateQuantity = (productId: string, newQuantity: number) => {
     if (newQuantity <= 0) {
       removeFromCart(productId);
     } else {
@@ -57,7 +74,7 @@ export default function CashierPOSPage() {
     }
   };
 
-  const removeFromCart = (productId: number) => {
+  const removeFromCart = (productId: string) => {
     setCart((prevCart) => prevCart.filter((item) => item.id !== productId));
   };
   
@@ -74,7 +91,7 @@ export default function CashierPOSPage() {
         p.brand.toLowerCase().includes(searchTerm.toLowerCase()) ||
         p.id.toString().includes(searchTerm)
     );
-  }, [searchTerm]);
+  }, [searchTerm, products]);
 
   const filteredCustomers = useMemo(() => {
     if (!customerSearch) return loyaltyMembers;
@@ -91,10 +108,6 @@ export default function CashierPOSPage() {
     const totalValue = subtotalValue + taxValue;
     return { subtotal: subtotalValue, tax: taxValue, total: totalValue };
   }, [cart]);
-
-  if (!isClient) {
-    return null;
-  }
 
   return (
     <div className="space-y-4 md:space-y-6">
@@ -118,26 +131,42 @@ export default function CashierPOSPage() {
             </CardContent>
           </Card>
 
-          <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
-            {filteredProducts.map((product) => (
-              <Card 
-                key={product.id} 
-                className="overflow-hidden cursor-pointer hover:shadow-lg transition-shadow duration-200 group"
-                onClick={() => addToCart(product)}
-              >
-                <div className="relative aspect-square">
-                   <Image src={product.image} alt={product.name} fill className="object-cover" data-ai-hint={product.hint} />
-                   <div className="absolute inset-0 bg-black/20 group-hover:bg-black/40 transition-colors duration-200 flex items-center justify-center">
-                      <PlusCircle className="h-10 w-10 text-white/70 group-hover:text-white transform group-hover:scale-110 transition-transform duration-200" />
-                   </div>
-                </div>
-                <div className="p-3 bg-card">
-                  <p className="font-semibold truncate">{product.name} <span className="text-sm text-muted-foreground">({product.brand})</span></p>
-                  <p className="text-sm text-muted-foreground">KSH {product.price.toFixed(2)}</p>
-                </div>
-              </Card>
-            ))}
-          </div>
+          {isLoadingProducts ? (
+            <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
+              {[...Array(8)].map((_, i) => (
+                <Card key={i} className="overflow-hidden">
+                  <div className="relative aspect-square bg-muted animate-pulse" />
+                  <div className="p-3 bg-card">
+                    <div className="space-y-2">
+                       <div className="h-4 bg-muted animate-pulse rounded-md" />
+                       <div className="h-3 w-1/2 bg-muted animate-pulse rounded-md" />
+                    </div>
+                  </div>
+                </Card>
+              ))}
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
+              {filteredProducts.map((product) => (
+                <Card 
+                  key={product.id} 
+                  className="overflow-hidden cursor-pointer hover:shadow-lg transition-shadow duration-200 group"
+                  onClick={() => addToCart(product)}
+                >
+                  <div className="relative aspect-square">
+                     <Image src={product.image} alt={product.name} fill className="object-cover" data-ai-hint={product.hint} />
+                     <div className="absolute inset-0 bg-black/20 group-hover:bg-black/40 transition-colors duration-200 flex items-center justify-center">
+                        <PlusCircle className="h-10 w-10 text-white/70 group-hover:text-white transform group-hover:scale-110 transition-transform duration-200" />
+                     </div>
+                  </div>
+                  <div className="p-3 bg-card">
+                    <p className="font-semibold truncate">{product.name} <span className="text-sm text-muted-foreground">({product.brand})</span></p>
+                    <p className="text-sm text-muted-foreground">KSH {product.price.toFixed(2)}</p>
+                  </div>
+                </Card>
+              ))}
+            </div>
+          )}
         </div>
 
         <div className="lg:col-span-1">

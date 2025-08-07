@@ -2,23 +2,23 @@
 
 import { useState, useEffect } from "react";
 import Image from "next/image";
+import { collection, addDoc, getDocs, doc, updateDoc, onSnapshot, DocumentData, deleteDoc } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { PlusCircle, MoreHorizontal, ImagePlus, Loader2 } from "lucide-react";
+import { PlusCircle, MoreHorizontal, ImagePlus, Loader2, Trash2 } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { products as initialProducts } from "@/lib/data";
+import type { Product } from "@/lib/data";
 import { uploadImage } from "@/lib/actions";
 import { useToast } from "@/hooks/use-toast";
 import { suggestCategory } from "@/ai/flows/suggest-category-flow";
 import { generateProductImage } from "@/ai/flows/generate-product-image-flow";
-
-
-type Product = typeof initialProducts[0];
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger, } from "@/components/ui/alert-dialog"
 
 // Helper function to convert data URI to File
 async function dataUriToFile(dataUrl: string, fileName: string): Promise<File> {
@@ -27,9 +27,9 @@ async function dataUriToFile(dataUrl: string, fileName: string): Promise<File> {
     return new File([blob], fileName, { type: blob.type });
 }
 
-
 export default function InventoryPage() {
-  const [products, setProducts] = useState(initialProducts);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
@@ -59,6 +59,25 @@ export default function InventoryPage() {
   const [editProductImage, setEditProductImage] = useState<File | null>(null);
   const [editProductImagePreview, setEditProductImagePreview] = useState<string | null>(null);
 
+  useEffect(() => {
+    const productsCollection = collection(db, "products");
+    const unsubscribe = onSnapshot(productsCollection, (snapshot) => {
+        const productsData = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })) as Product[];
+        setProducts(productsData);
+        setIsLoading(false);
+    }, (error) => {
+        console.error("Error fetching products:", error);
+        toast({
+            variant: "destructive",
+            title: "Failed to load products",
+            description: "Could not fetch product data from the database.",
+        });
+        setIsLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, [toast]);
+  
   useEffect(() => {
     if (newProductName.length > 3) {
       const timer = setTimeout(async () => {
@@ -175,9 +194,7 @@ export default function InventoryPage() {
         }
     }
 
-
-    const newProduct: Product = {
-        id: products.length > 0 ? Math.max(...products.map(p => p.id)) + 1 : 1,
+    const newProductData = {
         name: newProductName,
         brand: newProductBrand,
         price: parseFloat(newProductPrice),
@@ -187,9 +204,24 @@ export default function InventoryPage() {
         image: imageUrl,
         hint: `${newProductName.toLowerCase()} ${newProductBrand.toLowerCase()}`,
     };
-    setProducts([...products, newProduct]);
-    resetAddForm();
-    setIsUploading(false);
+    
+    try {
+        await addDoc(collection(db, "products"), newProductData);
+        toast({
+            title: "Product Added",
+            description: `${newProductName} has been added to the inventory.`,
+        });
+        resetAddForm();
+    } catch (error) {
+        console.error("Error adding product:", error);
+        toast({
+            variant: "destructive",
+            title: "Save Failed",
+            description: "Could not save the new product to the database.",
+        });
+    } finally {
+        setIsUploading(false);
+    }
   };
 
   const openEditDialog = (product: Product) => {
@@ -232,8 +264,7 @@ export default function InventoryPage() {
       }
     }
 
-    const updatedProduct = {
-      ...editingProduct,
+    const updatedProductData = {
       name: editProductName,
       brand: editProductBrand,
       price: parseFloat(editProductPrice),
@@ -244,10 +275,42 @@ export default function InventoryPage() {
       hint: `${editProductName.toLowerCase()} ${editProductBrand.toLowerCase()}`,
     };
 
-    setProducts(products.map(p => p.id === editingProduct.id ? updatedProduct : p));
-    setEditingProduct(null);
-    setIsEditDialogOpen(false);
-    setIsUploading(false);
+    try {
+        const productRef = doc(db, "products", editingProduct.id);
+        await updateDoc(productRef, updatedProductData);
+        toast({
+            title: "Product Updated",
+            description: "The product details have been saved.",
+        });
+        setEditingProduct(null);
+        setIsEditDialogOpen(false);
+    } catch (error) {
+         console.error("Error updating product:", error);
+        toast({
+            variant: "destructive",
+            title: "Update Failed",
+            description: "Could not save the product changes.",
+        });
+    } finally {
+        setIsUploading(false);
+    }
+  };
+  
+  const handleDeleteProduct = async (productId: string) => {
+    try {
+      await deleteDoc(doc(db, "products", productId));
+      toast({
+        title: "Product Deleted",
+        description: "The product has been removed from the inventory.",
+      });
+    } catch (error) {
+      console.error("Error deleting product:", error);
+      toast({
+        variant: "destructive",
+        title: "Delete Failed",
+        description: "Could not delete the product.",
+      });
+    }
   };
 
   return (
@@ -405,6 +468,11 @@ export default function InventoryPage() {
           <CardDescription>A list of all products in your inventory.</CardDescription>
         </CardHeader>
         <CardContent>
+          {isLoading ? (
+             <div className="flex justify-center items-center h-64">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+             </div>
+          ) : (
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>
@@ -455,7 +523,27 @@ export default function InventoryPage() {
                         <DropdownMenuContent align="end">
                           <DropdownMenuLabel>Actions</DropdownMenuLabel>
                           <DropdownMenuItem onClick={() => openEditDialog(product)}>Edit</DropdownMenuItem>
-                          <DropdownMenuItem>Delete</DropdownMenuItem>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                                <Trash2 className="mr-2 h-4 w-4 text-destructive" />
+                                <span className="text-destructive">Delete</span>
+                              </DropdownMenuItem>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  This action cannot be undone. This will permanently delete the product
+                                  from your inventory.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction onClick={() => handleDeleteProduct(product.id)}>Delete</AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </TableCell>
@@ -464,6 +552,7 @@ export default function InventoryPage() {
               </TableBody>
             </Table>
           </div>
+          )}
         </CardContent>
       </Card>
     </div>
