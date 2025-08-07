@@ -16,19 +16,31 @@ type Product = typeof initialProducts[0];
 
 export default function InventoryPage() {
   const [products, setProducts] = useState(initialProducts);
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  
+  // State for the "Add Product" dialog
   const [newProductName, setNewProductName] = useState("");
   const [newProductBrand, setNewProductBrand] = useState("");
   const [newProductPrice, setNewProductPrice] = useState("");
   const [newProductCategory, setNewProductCategory] = useState("");
   const [newProductStock, setNewProductStock] = useState("");
   const [newProductUnit, setNewProductUnit] = useState("");
+  
+  // State for the "Edit Product" dialog
+  const [editProductName, setEditProductName] = useState("");
+  const [editProductBrand, setEditProductBrand] = useState("");
+  const [editProductPrice, setEditProductPrice] = useState("");
+  const [editProductCategory, setEditProductCategory] = useState("");
+  const [editProductStock, setEditProductStock] = useState("");
+  const [editProductUnit, setEditProductUnit] = useState("");
 
 
   const handleAddProduct = () => {
     if (newProductName && newProductBrand && newProductPrice && newProductCategory && newProductStock && newProductUnit) {
-      const newProduct = {
-        id: products.length + 1,
+      const newProduct: Product = {
+        id: products.length > 0 ? Math.max(...products.map(p => p.id)) + 1 : 1,
         name: newProductName,
         brand: newProductBrand,
         price: parseFloat(newProductPrice),
@@ -45,8 +57,38 @@ export default function InventoryPage() {
       setNewProductCategory("");
       setNewProductStock("");
       setNewProductUnit("");
-      setIsDialogOpen(false);
+      setIsAddDialogOpen(false);
     }
+  };
+
+  const openEditDialog = (product: Product) => {
+    setEditingProduct(product);
+    setEditProductName(product.name);
+    setEditProductBrand(product.brand);
+    setEditProductPrice(product.price.toString());
+    setEditProductCategory(product.category);
+    setEditProductStock(product.stock.toString());
+    setEditProductUnit(product.unit);
+    setIsEditDialogOpen(true);
+  };
+  
+  const handleUpdateProduct = () => {
+    if (!editingProduct) return;
+
+    const updatedProduct = {
+      ...editingProduct,
+      name: editProductName,
+      brand: editProductBrand,
+      price: parseFloat(editProductPrice),
+      category: editProductCategory,
+      stock: parseInt(editProductStock, 10),
+      unit: editProductUnit,
+      hint: `${editProductName.toLowerCase()} ${editProductBrand.toLowerCase()}`,
+    };
+
+    setProducts(products.map(p => p.id === editingProduct.id ? updatedProduct : p));
+    setEditingProduct(null);
+    setIsEditDialogOpen(false);
   };
 
   return (
@@ -56,7 +98,7 @@ export default function InventoryPage() {
           <h1 className="font-headline text-3xl font-bold tracking-tight">Inventory</h1>
           <p className="text-muted-foreground">Manage your stock and inventory here.</p>
         </div>
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
           <DialogTrigger asChild>
             <Button>
               <PlusCircle className="mr-2 h-4 w-4" />
@@ -102,6 +144,49 @@ export default function InventoryPage() {
           </DialogContent>
         </Dialog>
       </div>
+
+      {/* Edit Product Dialog */}
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Edit Product</DialogTitle>
+            <DialogDescription>
+              Update the details of the product.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="edit-name" className="text-right">Name</Label>
+              <Input id="edit-name" value={editProductName} onChange={(e) => setEditProductName(e.target.value)} className="col-span-3" />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="edit-brand" className="text-right">Brand</Label>
+              <Input id="edit-brand" value={editProductBrand} onChange={(e) => setEditProductBrand(e.target.value)} className="col-span-3" />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="edit-price" className="text-right">Price (KSH)</Label>
+              <Input id="edit-price" type="number" value={editProductPrice} onChange={(e) => setEditProductPrice(e.target.value)} className="col-span-3" />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="edit-category" className="text-right">Category</Label>
+              <Input id="edit-category" value={editProductCategory} onChange={(e) => setEditProductCategory(e.target.value)} className="col-span-3" />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="edit-stock" className="text-right">Stock</Label>
+              <Input id="edit-stock" type="number" value={editProductStock} onChange={(e) => setEditProductStock(e.target.value)} className="col-span-3" />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="edit-unit" className="text-right">Unit</Label>
+              <Input id="edit-unit" value={editProductUnit} onChange={(e) => setEditProductUnit(e.target.value)} className="col-span-3" />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button type="submit" onClick={handleUpdateProduct}>Save Changes</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+
       <Card>
         <CardHeader>
           <CardTitle>Products</CardTitle>
@@ -157,7 +242,7 @@ export default function InventoryPage() {
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                           <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                          <DropdownMenuItem>Edit</DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => openEditDialog(product)}>Edit</DropdownMenuItem>
                           <DropdownMenuItem>Delete</DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
