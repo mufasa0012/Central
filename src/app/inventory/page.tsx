@@ -47,6 +47,7 @@ export default function InventoryPage() {
   const [newProductBrand, setNewProductBrand] = useState("");
   const [newProductDescription, setNewProductDescription] = useState("");
   const [newProductPrice, setNewProductPrice] = useState("");
+  const [newProductWholesalePrice, setNewProductWholesalePrice] = useState("");
   const [newProductCategory, setNewProductCategory] = useState("");
   const [newProductStock, setNewProductStock] = useState("");
   const [newProductUnit, setNewProductUnit] = useState("");
@@ -58,6 +59,7 @@ export default function InventoryPage() {
   const [editProductName, setEditProductName] = useState("");
   const [editProductBrand, setEditProductBrand] = useState("");
   const [editProductPrice, setEditProductPrice] = useState("");
+  const [editProductWholesalePrice, setEditProductWholesalePrice] = useState("");
   const [editProductCategory, setEditProductCategory] = useState("");
   const [editProductStock, setEditProductStock] = useState("");
   const [editProductUnit, setEditProductUnit] = useState("");
@@ -187,6 +189,7 @@ export default function InventoryPage() {
     setNewProductBrand("");
     setNewProductDescription("");
     setNewProductPrice("");
+    setNewProductWholesalePrice("");
     setNewProductCategory("");
     setNewProductStock("");
     setNewProductUnit("");
@@ -197,7 +200,7 @@ export default function InventoryPage() {
   };
 
   const handleAddProduct = async () => {
-    if (!newProductName || !newProductBrand || !newProductPrice || !newProductCategory || !newProductStock || !newProductUnit) {
+    if (!newProductName || !newProductBrand || !newProductPrice || !newProductWholesalePrice || !newProductCategory || !newProductStock || !newProductUnit) {
         toast({
             variant: "destructive",
             title: "Missing Fields",
@@ -251,6 +254,7 @@ export default function InventoryPage() {
         name: newProductName,
         brand: newProductBrand,
         price: parseFloat(newProductPrice),
+        wholesalePrice: parseFloat(newProductWholesalePrice),
         category: newProductCategory,
         stock: parseInt(newProductStock, 10),
         unit: newProductUnit,
@@ -282,6 +286,7 @@ export default function InventoryPage() {
     setEditProductName(product.name);
     setEditProductBrand(product.brand);
     setEditProductPrice(product.price.toString());
+    setEditProductWholesalePrice(product.wholesalePrice.toString());
     setEditProductCategory(product.category);
     setEditProductStock(product.stock.toString());
     setEditProductUnit(product.unit);
@@ -321,6 +326,7 @@ export default function InventoryPage() {
       name: editProductName,
       brand: editProductBrand,
       price: parseFloat(editProductPrice),
+      wholesalePrice: parseFloat(editProductWholesalePrice),
       category: editProductCategory,
       stock: parseInt(editProductStock, 10),
       unit: editProductUnit,
@@ -509,8 +515,12 @@ export default function InventoryPage() {
                     />
                   </div>
                   <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="price" className="text-right">Price (KSH)</Label>
+                    <Label htmlFor="price" className="text-right">Retail Price (KSH)</Label>
                     <Input id="price" type="number" value={newProductPrice} onChange={(e) => setNewProductPrice(e.target.value)} className="col-span-3" placeholder="e.g. 210" />
+                  </div>
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="wholesalePrice" className="text-right">Wholesale Price (KSH)</Label>
+                    <Input id="wholesalePrice" type="number" value={newProductWholesalePrice} onChange={(e) => setNewProductWholesalePrice(e.target.value)} className="col-span-3" placeholder="e.g. 200" />
                   </div>
                   <div className="grid grid-cols-4 items-center gap-4">
                     <Label htmlFor="category" className="text-right">Category</Label>
@@ -577,8 +587,12 @@ export default function InventoryPage() {
               <Input id="edit-brand" value={editProductBrand} onChange={(e) => setEditProductBrand(e.target.value)} className="col-span-3" />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="edit-price" className="text-right">Price (KSH)</Label>
+              <Label htmlFor="edit-price" className="text-right">Retail Price (KSH)</Label>
               <Input id="edit-price" type="number" value={editProductPrice} onChange={(e) => setEditProductPrice(e.target.value)} className="col-span-3" />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="edit-wholesalePrice" className="text-right">Wholesale Price (KSH)</Label>
+              <Input id="edit-wholesalePrice" type="number" value={editProductWholesalePrice} onChange={(e) => setEditProductWholesalePrice(e.target.value)} className="col-span-3" />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="edit-category" className="text-right">Category</Label>
@@ -626,8 +640,8 @@ export default function InventoryPage() {
                   <TableHead>Brand</TableHead>
                   <TableHead className="hidden md:table-cell">Category</TableHead>
                   <TableHead className="hidden md:table-cell">Stock</TableHead>
-                  <TableHead className="hidden md:table-cell">Unit</TableHead>
-                  <TableHead className="text-right">Price</TableHead>
+                  <TableHead className="text-right">Retail Price</TableHead>
+                  <TableHead className="text-right">Wholesale</TableHead>
                   <TableHead>
                     <span className="sr-only">Actions</span>
                   </TableHead>
@@ -651,9 +665,9 @@ export default function InventoryPage() {
                     <TableCell className="hidden md:table-cell">
                       <Badge variant="outline">{product.category}</Badge>
                     </TableCell>
-                    <TableCell className="hidden md:table-cell">{product.stock}</TableCell>
-                    <TableCell className="hidden md:table-cell">{product.unit}</TableCell>
+                    <TableCell className="hidden md:table-cell">{product.stock} {product.unit}</TableCell>
                     <TableCell className="text-right">KSH {product.price.toFixed(2)}</TableCell>
+                    <TableCell className="text-right">KSH {product.wholesalePrice.toFixed(2)}</TableCell>
                      <TableCell>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
