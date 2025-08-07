@@ -1,9 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { PlusCircle, MoreHorizontal } from "lucide-react";
+import { PlusCircle, MoreHorizontal, ImagePlus, Loader2 } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -11,6 +12,9 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { products as initialProducts } from "@/lib/data";
+import { uploadImage } from "@/lib/actions";
+import { useToast } from "@/hooks/use-toast";
+
 
 type Product = typeof initialProducts[0];
 
@@ -19,6 +23,8 @@ export default function InventoryPage() {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const { toast } = useToast();
   
   // State for the "Add Product" dialog
   const [newProductName, setNewProductName] = useState("");
@@ -27,6 +33,8 @@ export default function InventoryPage() {
   const [newProductCategory, setNewProductCategory] = useState("");
   const [newProductStock, setNewProductStock] = useState("");
   const [newProductUnit, setNewProductUnit] = useState("");
+  const [newProductImage, setNewProductImage] = useState<File | null>(null);
+  const [newProductImagePreview, setNewProductImagePreview] = useState<string | null>(null);
   
   // State for the "Edit Product" dialog
   const [editProductName, setEditProductName] = useState("");
@@ -35,11 +43,70 @@ export default function InventoryPage() {
   const [editProductCategory, setEditProductCategory] = useState("");
   const [editProductStock, setEditProductStock] = useState("");
   const [editProductUnit, setEditProductUnit] = useState("");
+  const [editProductImage, setEditProductImage] = useState<File | null>(null);
+  const [editProductImagePreview, setEditProductImagePreview] = useState<string | null>(null);
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>, isEditing: boolean) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (isEditing) {
+        setEditProductImage(file);
+        setEditProductImagePreview(URL.createObjectURL(file));
+      } else {
+        setNewProductImage(file);
+        setNewProductImagePreview(URL.createObjectURL(file));
+      }
+    }
+  };
+
+  const resetAddForm = () => {
+    setNewProductName("");
+    setNewProductBrand("");
+    setNewProductPrice("");
+    setNewProductCategory("");
+    setNewProductStock("");
+    setNewProductUnit("");
+    setNewProductImage(null);
+    setNewProductImagePreview(null);
+    setIsAddDialogOpen(false);
+  };
+
+  const handleAddProduct = async () => {
+    if (!newProductName || !newProductBrand || !newProductPrice || !newProductCategory || !newProductStock || !newProductUnit) {
+        toast({
+            variant: "destructive",
+            title: "Missing Fields",
+            description: "Please fill out all product details.",
+        });
+        return;
+    }
+    
+    setIsUploading(true);
+    let imageUrl = "https://placehold.co/300x300";
+
+    if (newProductImage) {
+        try {
+            const formData = new FormData();
+            formData.append("file", newProductImage);
+            const result = await uploadImage(formData);
+            if (result.url) {
+                imageUrl = result.url;
+            } else {
+                 throw new Error(result.error || "Image upload failed.");
+            }
+        } catch (error: any) {
+            toast({
+                variant: "destructive",
+                title: "Image Upload Failed",
+                description: error.message || "Could not upload image. Please try again.",
+            });
+            setIsUploading(false);
+            return;
+        }
+    }
 
 
-  const handleAddProduct = () => {
-    if (newProductName && newProductBrand && newProductPrice && newProductCategory && newProductStock && newProductUnit) {
-      const newProduct: Product = {
+    const newProduct: Product = {
         id: products.length > 0 ? Math.max(...products.map(p => p.id)) + 1 : 1,
         name: newProductName,
         brand: newProductBrand,
@@ -47,18 +114,12 @@ export default function InventoryPage() {
         category: newProductCategory,
         stock: parseInt(newProductStock, 10),
         unit: newProductUnit,
-        image: "https://placehold.co/300x300",
+        image: imageUrl,
         hint: `${newProductName.toLowerCase()} ${newProductBrand.toLowerCase()}`,
-      };
-      setProducts([...products, newProduct]);
-      setNewProductName("");
-      setNewProductBrand("");
-      setNewProductPrice("");
-      setNewProductCategory("");
-      setNewProductStock("");
-      setNewProductUnit("");
-      setIsAddDialogOpen(false);
-    }
+    };
+    setProducts([...products, newProduct]);
+    resetAddForm();
+    setIsUploading(false);
   };
 
   const openEditDialog = (product: Product) => {
@@ -69,11 +130,37 @@ export default function InventoryPage() {
     setEditProductCategory(product.category);
     setEditProductStock(product.stock.toString());
     setEditProductUnit(product.unit);
+    setEditProductImage(null);
+    setEditProductImagePreview(product.image);
     setIsEditDialogOpen(true);
   };
   
-  const handleUpdateProduct = () => {
+  const handleUpdateProduct = async () => {
     if (!editingProduct) return;
+
+    setIsUploading(true);
+    let imageUrl = editingProduct.image;
+
+    if (editProductImage) {
+      try {
+        const formData = new FormData();
+        formData.append("file", editProductImage);
+        const result = await uploadImage(formData);
+        if (result.url) {
+          imageUrl = result.url;
+        } else {
+          throw new Error(result.error || "Image upload failed.");
+        }
+      } catch (error: any) {
+        toast({
+            variant: "destructive",
+            title: "Image Upload Failed",
+            description: error.message || "Could not upload image. Please try again.",
+        });
+        setIsUploading(false);
+        return;
+      }
+    }
 
     const updatedProduct = {
       ...editingProduct,
@@ -83,12 +170,14 @@ export default function InventoryPage() {
       category: editProductCategory,
       stock: parseInt(editProductStock, 10),
       unit: editProductUnit,
+      image: imageUrl,
       hint: `${editProductName.toLowerCase()} ${editProductBrand.toLowerCase()}`,
     };
 
     setProducts(products.map(p => p.id === editingProduct.id ? updatedProduct : p));
     setEditingProduct(null);
     setIsEditDialogOpen(false);
+    setIsUploading(false);
   };
 
   return (
@@ -113,6 +202,24 @@ export default function InventoryPage() {
               </DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4">
+              <div className="grid grid-cols-4 items-center gap-4">
+                 <Label className="text-right">Image</Label>
+                 <div className="col-span-3">
+                   <Input id="image" type="file" className="hidden" onChange={(e) => handleImageChange(e, false)} accept="image/*"/>
+                   <Label htmlFor="image" className="cursor-pointer">
+                        <div className="w-full aspect-video rounded-md border-2 border-dashed border-muted-foreground/50 flex flex-col items-center justify-center text-muted-foreground hover:bg-muted/50">
+                           {newProductImagePreview ? (
+                                <Image src={newProductImagePreview} alt="Product preview" width={150} height={84} className="object-cover rounded-md"/>
+                           ) : (
+                                <>
+                                 <ImagePlus className="h-10 w-10 mb-2"/>
+                                 <p>Upload Image</p>
+                                </>
+                           )}
+                        </div>
+                   </Label>
+                 </div>
+              </div>
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="name" className="text-right">Name</Label>
                 <Input id="name" value={newProductName} onChange={(e) => setNewProductName(e.target.value)} className="col-span-3" placeholder="e.g. Maize Flour" />
@@ -139,7 +246,11 @@ export default function InventoryPage() {
               </div>
             </div>
             <DialogFooter>
-              <Button type="submit" onClick={handleAddProduct}>Save Product</Button>
+              <Button type="button" variant="outline" onClick={resetAddForm}>Cancel</Button>
+              <Button type="submit" onClick={handleAddProduct} disabled={isUploading}>
+                {isUploading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Save Product
+              </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
@@ -155,6 +266,24 @@ export default function InventoryPage() {
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
+              <div className="grid grid-cols-4 items-center gap-4">
+                 <Label className="text-right">Image</Label>
+                 <div className="col-span-3">
+                   <Input id="edit-image" type="file" className="hidden" onChange={(e) => handleImageChange(e, true)} accept="image/*"/>
+                   <Label htmlFor="edit-image" className="cursor-pointer">
+                        <div className="w-full aspect-video rounded-md border-2 border-dashed border-muted-foreground/50 flex flex-col items-center justify-center text-muted-foreground hover:bg-muted/50">
+                           {editProductImagePreview ? (
+                                <Image src={editProductImagePreview} alt="Product preview" width={150} height={84} className="object-cover rounded-md"/>
+                           ) : (
+                                <>
+                                 <ImagePlus className="h-10 w-10 mb-2"/>
+                                 <p>Upload Image</p>
+                                </>
+                           )}
+                        </div>
+                   </Label>
+                 </div>
+              </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="edit-name" className="text-right">Name</Label>
               <Input id="edit-name" value={editProductName} onChange={(e) => setEditProductName(e.target.value)} className="col-span-3" />
@@ -181,7 +310,11 @@ export default function InventoryPage() {
             </div>
           </div>
           <DialogFooter>
-            <Button type="submit" onClick={handleUpdateProduct}>Save Changes</Button>
+             <Button type="button" variant="outline" onClick={() => setIsEditDialogOpen(false)}>Cancel</Button>
+            <Button type="submit" onClick={handleUpdateProduct} disabled={isUploading}>
+              {isUploading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Save Changes
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -215,7 +348,7 @@ export default function InventoryPage() {
                 {products.map((product) => (
                   <TableRow key={product.id}>
                     <TableCell className="hidden sm:table-cell">
-                      <img
+                      <Image
                         alt={product.name}
                         className="aspect-square rounded-md object-cover"
                         height="64"
