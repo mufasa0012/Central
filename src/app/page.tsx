@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useMemo, useEffect } from "react";
@@ -113,7 +114,8 @@ export default function CashierPOSPage() {
     <div className="flex flex-col h-full">
       <h1 className="font-headline text-3xl font-bold tracking-tight mb-4 md:mb-6">Cashier POS</h1>
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start flex-1">
-        <div className="lg:col-span-2 space-y-6 h-full flex flex-col">
+        {/* Products Section */}
+        <div className="lg:col-span-2 space-y-6">
           <Card>
             <CardContent className="p-4">
               <div className="relative">
@@ -131,7 +133,7 @@ export default function CashierPOSPage() {
             </CardContent>
           </Card>
 
-          <div className="flex-1 min-h-0">
+          <div className="min-h-[500px] lg:min-h-0">
             {isLoadingProducts ? (
               <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
                 {[...Array(8)].map((_, i) => (
@@ -170,9 +172,10 @@ export default function CashierPOSPage() {
                 </div>
               </ScrollArea>
             )}
-            </div>
+          </div>
         </div>
 
+        {/* Cart Section */}
         <div className="lg:col-span-1">
           <Card className="sticky top-8 shadow-lg">
             <CardHeader>
