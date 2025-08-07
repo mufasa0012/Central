@@ -12,16 +12,18 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogClose } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ScanLine, Search, PlusCircle, MinusCircle, Trash2, X, CreditCard, Landmark, Smartphone, UserPlus, Award, Loader2 } from "lucide-react";
+import { ScanLine, Search, PlusCircle, MinusCircle, Trash2, X, CreditCard, Landmark, Smartphone, UserPlus, Award, Loader2, RefreshCw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import type { Product } from "@/lib/data";
 import { loyaltyMembers as initialLoyaltyMembers } from "@/lib/data";
 import { Label } from "@/components/ui/label";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+
 
 const loyaltyMembers = initialLoyaltyMembers;
 
-type CartItem = Product & { quantity: number };
+type CartItem = Product & { quantity: number; useWholesale: boolean };
 type LoyaltyCustomer = typeof loyaltyMembers[0];
 
 export default function CashierPOSPage() {
@@ -62,7 +64,7 @@ export default function CashierPOSPage() {
           item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item
         );
       }
-      return [...prevCart, { ...product, quantity: 1 }];
+      return [...prevCart, { ...product, quantity: 1, useWholesale: false }];
     });
   };
 
@@ -80,6 +82,14 @@ export default function CashierPOSPage() {
 
   const removeFromCart = (productId: string) => {
     setCart((prevCart) => prevCart.filter((item) => item.id !== productId));
+  };
+  
+  const togglePrice = (productId: string) => {
+    setCart((prevCart) =>
+      prevCart.map((item) =>
+        item.id === productId ? { ...item, useWholesale: !item.useWholesale } : item
+      )
+    );
   };
   
   const clearCart = () => {
@@ -108,7 +118,10 @@ export default function CashierPOSPage() {
   }, [customerSearch]);
 
   const { subtotal, total } = useMemo(() => {
-    const subtotalValue = cart.reduce((acc, item) => acc + item.price * item.quantity, 0);
+    const subtotalValue = cart.reduce((acc, item) => {
+        const price = item.useWholesale ? (item.wholesalePrice || item.price) : item.price;
+        return acc + price * item.quantity;
+    }, 0);
     const totalValue = subtotalValue;
     return { subtotal: subtotalValue, total: totalValue };
   }, [cart]);
@@ -270,7 +283,11 @@ export default function CashierPOSPage() {
                   </div>
                 ) : (
                   <div className="flex flex-col gap-4">
-                    {cart.map((item) => (
+                   <TooltipProvider>
+                    {cart.map((item) => {
+                      const price = item.useWholesale ? (item.wholesalePrice || item.price) : item.price;
+                      const hasWholesale = item.wholesalePrice !== undefined && item.wholesalePrice > 0;
+                      return (
                       <div key={item.id} className="flex items-center gap-3">
                         <Image src={item.image} alt={item.name} width={48} height={48} className="rounded-md" data-ai-hint={item.hint}/>
                         <div className="flex-grow overflow-hidden">
@@ -283,14 +300,32 @@ export default function CashierPOSPage() {
                             <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => updateQuantity(item.id, item.quantity + 1)}>
                               <PlusCircle className="h-4 w-4" />
                             </Button>
+                             {hasWholesale && (
+                                <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => togglePrice(item.id)}>
+                                      <RefreshCw className="h-3 w-3" />
+                                    </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                    <p>Switch to {item.useWholesale ? 'Retail' : 'Wholesale'} Price</p>
+                                </TooltipContent>
+                                </Tooltip>
+                             )}
                           </div>
                         </div>
-                        <p className="font-semibold text-sm">KSH {(item.price * item.quantity).toFixed(2)}</p>
+                        <div className="text-right">
+                          <p className="font-semibold text-sm">KSH {(price * item.quantity).toFixed(2)}</p>
+                          <Badge variant={item.useWholesale ? "secondary" : "outline"} className="text-xs px-1 py-0">{item.useWholesale ? "Wholesale" : "Retail"}</Badge>
+                        </div>
+
                         <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-destructive h-7 w-7" onClick={() => removeFromCart(item.id)}>
                           <X className="h-4 w-4" />
                         </Button>
                       </div>
-                    ))}
+                      )
+                    })}
+                    </TooltipProvider>
                   </div>
                 )}
               </ScrollArea>
@@ -391,3 +426,4 @@ export default function CashierPOSPage() {
   );
 }
 
+    
