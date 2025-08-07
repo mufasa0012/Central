@@ -23,6 +23,14 @@ const salesData = [
 
 ];
 
+const formatDateForChart = (dateStr: string) => {
+    // Input: "2024-07-28"
+    // Output: "Jul 28"
+    const [year, month, day] = dateStr.split('-');
+    const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
+}
+
 
 export default function ReportsPage() {
   const [products, setProducts] = useState<Product[]>([]);
@@ -50,17 +58,17 @@ export default function ReportsPage() {
     const dailySales: {[key: string]: number} = {};
     salesData.forEach(sale => {
       if (sale.status === 'Paid') {
-        const date = new Date(sale.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-        if (!dailySales[date]) {
-          dailySales[date] = 0;
+        const chartDate = formatDateForChart(sale.date);
+        if (!dailySales[chartDate]) {
+          dailySales[chartDate] = 0;
         }
-        dailySales[date] += sale.total;
+        dailySales[chartDate] += sale.total;
       }
     });
     return Object.keys(dailySales).map(date => ({
       date,
       total: dailySales[date]
-    })).reverse();
+    })).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
   }, []);
 
 
@@ -159,10 +167,11 @@ export default function ReportsPage() {
                       <TableRow key={sale.id}>
                         <TableCell>
                           <div className="font-medium">{sale.customer}</div>
-                          <div className="text-sm text-muted-foreground">{new Date(sale.date).toLocaleDateString('en-CA')}</div>
+                          <div className="text-sm text-muted-foreground">{sale.date}</div>
                         </TableCell>
                         <TableCell className="text-right">
                           <Badge variant={sale.status === 'Paid' ? 'secondary' : 'destructive'} className="mr-2">{sale.status}</Badge>
+
                           KSH {sale.total.toFixed(2)}
                         </TableCell>
                       </TableRow>
