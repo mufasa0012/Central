@@ -12,29 +12,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScanLine, Search, PlusCircle, MinusCircle, Trash2, X, CreditCard, Landmark, Smartphone, UserPlus, Award } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
+import { products as initialProducts, loyaltyMembers as initialLoyaltyMembers } from "@/lib/data";
 
-const products = [
-  { id: 1, name: "Organic Apples", price: 2.99, category: "Produce", image: "https://placehold.co/300x300", hint: "apples fruit" },
-  { id: 2, name: "Whole Wheat Bread", price: 4.50, category: "Bakery", image: "https://placehold.co/300x300", hint: "bread bakery" },
-  { id: 3, name: "Free-Range Eggs", price: 5.25, category: "Dairy", image: "https://placehold.co/300x300", hint: "eggs dairy" },
-  { id: 4, name: "Almond Milk", price: 3.75, category: "Dairy", image: "https://placehold.co/300x300", hint: "almond milk" },
-  { id: 5, name: "Avocado", price: 1.99, category: "Produce", image: "https://placehold.co/300x300", hint: "avocado fruit" },
-  { id: 6, name: "Chicken Breast", price: 9.99, category: "Meat", image: "https://placehold.co/300x300", hint: "chicken meat" },
-  { id: 7, name: "Quinoa", price: 6.49, category: "Grains", image: "https://placehold.co/300x300", hint: "quinoa grain" },
-  { id: 8, name: "Greek Yogurt", price: 4.99, category: "Dairy", image: "https://placehold.co/300x300", hint: "yogurt dairy" },
-  { id: 9, name: "Olive Oil", price: 12.99, category: "Pantry", image: "https://placehold.co/300x300", hint: "olive oil" },
-  { id: 10, name: "Dark Chocolate", price: 3.99, category: "Snacks", image: "https://placehold.co/300x300", hint: "chocolate snack" },
-  { id: 11, name: "Sparkling Water", price: 1.50, category: "Beverages", image: "https://placehold.co/300x300", hint: "water beverage" },
-  { id: 12, name: "Coffee Beans", price: 15.99, category: "Beverages", image: "https://placehold.co/300x300", hint: "coffee beans" },
-];
-
-const loyaltyMembers = [
-  { id: "CUST001", name: "John Doe", email: "john.doe@example.com", points: 1250 },
-  { id: "CUST002", name: "Jane Smith", email: "jane.smith@example.com", points: 850 },
-  { id: "CUST003", name: "Alice Johnson", email: "alice.j@example.com", points: 2400 },
-  { id: "CUST004", name: "Robert Brown", email: "robert.brown@example.com", points: 450 },
-  { id: "CUST005", name: "Emily Davis", email: "emily.d@example.com", points: 3000 },
-];
+const products = initialProducts;
+const loyaltyMembers = initialLoyaltyMembers;
 
 type Product = typeof products[0];
 type CartItem = Product & { quantity: number };

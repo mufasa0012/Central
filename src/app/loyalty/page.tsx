@@ -9,14 +9,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { useState } from "react";
-
-const initialLoyaltyMembers = [
-  { id: "CUST001", name: "John Doe", email: "john.doe@example.com", points: 1250 },
-  { id: "CUST002", name: "Jane Smith", email: "jane.smith@example.com", points: 850 },
-  { id: "CUST003", name: "Alice Johnson", email: "alice.j@example.com", points: 2400 },
-  { id: "CUST004", name: "Robert Brown", email: "robert.brown@example.com", points: 450 },
-  { id: "CUST005", name: "Emily Davis", email: "emily.d@example.com", points: 3000 },
-];
+import { loyaltyMembers as initialLoyaltyMembers } from "@/lib/data";
 
 export default function LoyaltyPage() {
   const [loyaltyMembers, setLoyaltyMembers] = useState(initialLoyaltyMembers);
