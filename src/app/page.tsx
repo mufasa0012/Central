@@ -281,28 +281,34 @@ export default function CashierPOSPage() {
                     <TabsContent value="cash">
                       <div className="space-y-4">
                         <p className="text-center text-muted-foreground">Customer pays with cash.</p>
-                         <Button className="w-full" size="lg" onClick={() => {
-                          toast({ title: "Success", description: "Payment completed."});
-                          clearCart();
-                         }}>Confirm Payment</Button>
+                         <DialogClose asChild>
+                           <Button className="w-full" size="lg" onClick={() => {
+                            toast({ title: "Success", description: "Payment completed."});
+                            clearCart();
+                           }}>Confirm Payment</Button>
+                         </DialogClose>
                       </div>
                     </TabsContent>
                      <TabsContent value="card">
                        <div className="space-y-4">
                         <p className="text-center text-muted-foreground">Waiting for card terminal...</p>
-                         <Button className="w-full" size="lg" onClick={() => {
-                          toast({ title: "Success", description: "Payment completed."});
-                          clearCart();
-                         }}>Confirm Payment</Button>
+                         <DialogClose asChild>
+                           <Button className="w-full" size="lg" onClick={() => {
+                            toast({ title: "Success", description: "Payment completed."});
+                            clearCart();
+                           }}>Confirm Payment</Button>
+                         </DialogClose>
                       </div>
                     </TabsContent>
                      <TabsContent value="mpesa">
                        <div className="space-y-4">
                         <p className="text-center text-muted-foreground">Send payment request to customer's phone.</p>
-                         <Button className="w-full" size="lg" onClick={() => {
-                          toast({ title: "Success", description: "Payment completed."});
-                          clearCart();
-                         }}>Confirm Payment</Button>
+                         <DialogClose asChild>
+                           <Button className="w-full" size="lg" onClick={() => {
+                            toast({ title: "Success", description: "Payment completed."});
+                            clearCart();
+                           }}>Confirm Payment</Button>
+                         </DialogClose>
                       </div>
                     </TabsContent>
                   </Tabs>
