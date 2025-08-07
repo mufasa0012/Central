@@ -1,3 +1,262 @@
-export default function Home() {
-  return <></>;
+"use client";
+
+import React, { useState, useMemo, useEffect } from "react";
+import Image from "next/image";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Separator } from "@/components/ui/separator";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ScanLine, Search, PlusCircle, MinusCircle, Trash2, X, CreditCard, Landmark, Smartphone } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+
+const products = [
+  { id: 1, name: "Organic Apples", price: 2.99, category: "Produce", image: "https://placehold.co/300x300", hint: "apples fruit" },
+  { id: 2, name: "Whole Wheat Bread", price: 4.50, category: "Bakery", image: "https://placehold.co/300x300", hint: "bread bakery" },
+  { id: 3, name: "Free-Range Eggs", price: 5.25, category: "Dairy", image: "https://placehold.co/300x300", hint: "eggs dairy" },
+  { id: 4, name: "Almond Milk", price: 3.75, category: "Dairy", image: "https://placehold.co/300x300", hint: "almond milk" },
+  { id: 5, name: "Avocado", price: 1.99, category: "Produce", image: "https://placehold.co/300x300", hint: "avocado fruit" },
+  { id: 6, name: "Chicken Breast", price: 9.99, category: "Meat", image: "https://placehold.co/300x300", hint: "chicken meat" },
+  { id: 7, name: "Quinoa", price: 6.49, category: "Grains", image: "https://placehold.co/300x300", hint: "quinoa grain" },
+  { id: 8, name: "Greek Yogurt", price: 4.99, category: "Dairy", image: "https://placehold.co/300x300", hint: "yogurt dairy" },
+  { id: 9, name: "Olive Oil", price: 12.99, category: "Pantry", image: "https://placehold.co/300x300", hint: "olive oil" },
+  { id: 10, name: "Dark Chocolate", price: 3.99, category: "Snacks", image: "https://placehold.co/300x300", hint: "chocolate snack" },
+  { id: 11, name: "Sparkling Water", price: 1.50, category: "Beverages", image: "https://placehold.co/300x300", hint: "water beverage" },
+  { id: 12, name: "Coffee Beans", price: 15.99, category: "Beverages", image: "https://placehold.co/300x300", hint: "coffee beans" },
+];
+
+type Product = typeof products[0];
+type CartItem = Product & { quantity: number };
+
+export default function CashierPOSPage() {
+  const [cart, setCart] = useState<CartItem[]>([]);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [isClient, setIsClient] = useState(false);
+  const { toast } = useToast();
+
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
+
+  const addToCart = (product: Product) => {
+    setCart((prevCart) => {
+      const existingItem = prevCart.find((item) => item.id === product.id);
+      if (existingItem) {
+        return prevCart.map((item) =>
+          item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item
+        );
+      }
+      return [...prevCart, { ...product, quantity: 1 }];
+    });
+  };
+
+  const updateQuantity = (productId: number, newQuantity: number) => {
+    if (newQuantity <= 0) {
+      removeFromCart(productId);
+    } else {
+      setCart((prevCart) =>
+        prevCart.map((item) =>
+          item.id === productId ? { ...item, quantity: newQuantity } : item
+        )
+      );
+    }
+  };
+
+  const removeFromCart = (productId: number) => {
+    setCart((prevCart) => prevCart.filter((item) => item.id !== productId));
+  };
+  
+  const clearCart = () => {
+    setCart([]);
+  }
+
+  const filteredProducts = useMemo(() => {
+    if (!searchTerm) return products;
+    return products.filter(
+      (p) =>
+        p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        p.id.toString().includes(searchTerm)
+    );
+  }, [searchTerm]);
+
+  const { subtotal, tax, total } = useMemo(() => {
+    const subtotalValue = cart.reduce((acc, item) => acc + item.price * item.quantity, 0);
+    const taxValue = subtotalValue * 0.08; // 8% tax
+    const totalValue = subtotalValue + taxValue;
+    return { subtotal: subtotalValue, tax: taxValue, total: totalValue };
+  }, [cart]);
+
+  if (!isClient) {
+    return null;
+  }
+
+  return (
+    <div className="space-y-6">
+      <h1 className="font-headline text-3xl font-bold tracking-tight">Cashier POS</h1>
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-8 items-start">
+        <div className="xl:col-span-2">
+          <Card className="mb-6">
+            <CardContent className="p-4">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                <Input
+                  placeholder="Scan barcode or search products..."
+                  className="pl-10 h-12 text-lg"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+                <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                  <ScanLine className="h-6 w-6 text-muted-foreground" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            {filteredProducts.map((product) => (
+              <Card 
+                key={product.id} 
+                className="overflow-hidden cursor-pointer hover:shadow-lg transition-shadow duration-200 group"
+                onClick={() => addToCart(product)}
+              >
+                <div className="relative aspect-square">
+                   <Image src={product.image} alt={product.name} fill className="object-cover" data-ai-hint={product.hint} />
+                   <div className="absolute inset-0 bg-black/20 group-hover:bg-black/40 transition-colors duration-200 flex items-center justify-center">
+                      <PlusCircle className="h-10 w-10 text-white/70 group-hover:text-white transform group-hover:scale-110 transition-transform duration-200" />
+                   </div>
+                </div>
+                <div className="p-3 bg-card">
+                  <p className="font-semibold truncate">{product.name}</p>
+                  <p className="text-muted-foreground">${product.price.toFixed(2)}</p>
+                </div>
+              </Card>
+            ))}
+          </div>
+        </div>
+
+        <div className="xl:col-span-1">
+          <Card className="sticky top-8 shadow-lg">
+            <CardHeader>
+              <CardTitle className="font-headline text-2xl flex justify-between items-center">
+                Current Sale
+                {cart.length > 0 && (
+                  <Button variant="ghost" size="icon" onClick={clearCart} className="text-muted-foreground hover:text-destructive">
+                    <Trash2 className="h-5 w-5" />
+                  </Button>
+                )}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ScrollArea className="h-[300px] pr-4">
+                {cart.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
+                    <p>Your cart is empty</p>
+                  </div>
+                ) : (
+                  <div className="flex flex-col gap-4">
+                    {cart.map((item) => (
+                      <div key={item.id} className="flex items-center gap-4">
+                        <Image src={item.image} alt={item.name} width={64} height={64} className="rounded-md" data-ai-hint={item.hint}/>
+                        <div className="flex-grow">
+                          <p className="font-medium">{item.name}</p>
+                          <div className="flex items-center gap-2 text-muted-foreground">
+                            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => updateQuantity(item.id, item.quantity - 1)}>
+                              <MinusCircle className="h-4 w-4" />
+                            </Button>
+                            <span>{item.quantity}</span>
+                            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => updateQuantity(item.id, item.quantity + 1)}>
+                              <PlusCircle className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </div>
+                        <p className="font-semibold">${(item.price * item.quantity).toFixed(2)}</p>
+                        <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-destructive h-8 w-8" onClick={() => removeFromCart(item.id)}>
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </ScrollArea>
+              {cart.length > 0 && (
+                <>
+                  <Separator className="my-4" />
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between">
+                      <p>Subtotal</p>
+                      <p className="font-medium">${subtotal.toFixed(2)}</p>
+                    </div>
+                    <div className="flex justify-between">
+                      <p>Tax (8%)</p>
+                      <p className="font-medium">${tax.toFixed(2)}</p>
+                    </div>
+                     <div className="flex justify-between text-muted-foreground">
+                      <p>Discount</p>
+                      <p className="font-medium">-$0.00</p>
+                    </div>
+                    <Separator className="my-2" />
+                    <div className="flex justify-between text-lg font-bold">
+                      <p>Total</p>
+                      <p>${total.toFixed(2)}</p>
+                    </div>
+                  </div>
+                </>
+              )}
+            </CardContent>
+            <CardFooter>
+              <Dialog onOpenChange={(open) => !open && cart.length === 0}>
+                <DialogTrigger asChild>
+                  <Button size="lg" className="w-full text-lg" disabled={cart.length === 0}>
+                    Charge ${total.toFixed(2)}
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-[425px]">
+                  <DialogHeader>
+                    <DialogTitle className="font-headline text-2xl">Complete Payment</DialogTitle>
+                  </DialogHeader>
+                  <Tabs defaultValue="cash" className="w-full">
+                    <TabsList className="grid w-full grid-cols-3">
+                      <TabsTrigger value="cash"><Landmark className="mr-2 h-4 w-4"/>Cash</TabsTrigger>
+                      <TabsTrigger value="card"><CreditCard className="mr-2 h-4 w-4"/>Card</TabsTrigger>
+                      <TabsTrigger value="mpesa"><Smartphone className="mr-2 h-4 w-4"/>M-Pesa</TabsTrigger>
+                    </TabsList>
+                    <div className="py-4 text-center text-4xl font-bold tracking-tight">${total.toFixed(2)}</div>
+                    <TabsContent value="cash">
+                      <div className="space-y-4">
+                        <p className="text-center text-muted-foreground">Customer pays with cash.</p>
+                         <Button className="w-full" size="lg" onClick={() => {
+                          toast({ title: "Success", description: "Payment completed."});
+                          clearCart();
+                         }}>Confirm Payment</Button>
+                      </div>
+                    </TabsContent>
+                     <TabsContent value="card">
+                       <div className="space-y-4">
+                        <p className="text-center text-muted-foreground">Waiting for card terminal...</p>
+                         <Button className="w-full" size="lg" onClick={() => {
+                          toast({ title: "Success", description: "Payment completed."});
+                          clearCart();
+                         }}>Confirm Payment</Button>
+                      </div>
+                    </TabsContent>
+                     <TabsContent value="mpesa">
+                       <div className="space-y-4">
+                        <p className="text-center text-muted-foreground">Send payment request to customer's phone.</p>
+                         <Button className="w-full" size="lg" onClick={() => {
+                          toast({ title: "Success", description: "Payment completed."});
+                          clearCart();
+                         }}>Confirm Payment</Button>
+                      </div>
+                    </TabsContent>
+                  </Tabs>
+                </DialogContent>
+              </Dialog>
+            </CardFooter>
+          </Card>
+        </div>
+      </div>
+    </div>
+  );
 }
