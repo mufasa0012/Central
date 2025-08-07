@@ -1,12 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import { collection, addDoc, getDocs, doc, updateDoc, onSnapshot, DocumentData, deleteDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { PlusCircle, MoreHorizontal, ImagePlus, Loader2, Trash2 } from "lucide-react";
+import { PlusCircle, MoreHorizontal, ImagePlus, Loader2, Trash2, ScanLine } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -18,7 +18,9 @@ import { uploadImage } from "@/lib/actions";
 import { useToast } from "@/hooks/use-toast";
 import { suggestCategory } from "@/ai/flows/suggest-category-flow";
 import { generateProductImage } from "@/ai/flows/generate-product-image-flow";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger, } from "@/components/ui/alert-dialog"
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger, } from "@/components/ui/alert-dialog";
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
+
 
 // Helper function to convert data URI to File
 async function dataUriToFile(dataUrl: string, fileName: string): Promise<File> {
@@ -58,6 +60,12 @@ export default function InventoryPage() {
   const [editProductUnit, setEditProductUnit] = useState("");
   const [editProductImage, setEditProductImage] = useState<File | null>(null);
   const [editProductImagePreview, setEditProductImagePreview] = useState<string | null>(null);
+
+  // State for the Scanner Dialog
+  const [isScannerOpen, setIsScannerOpen] = useState(false);
+  const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+
 
   useEffect(() => {
     const productsCollection = collection(db, "products");
@@ -116,6 +124,38 @@ export default function InventoryPage() {
       return () => clearTimeout(timer);
     }
   }, [newProductName, newProductBrand]);
+
+  useEffect(() => {
+    if (!isScannerOpen) {
+        // Stop camera stream when dialog is closed
+        if (videoRef.current && videoRef.current.srcObject) {
+            const stream = videoRef.current.srcObject as MediaStream;
+            stream.getTracks().forEach(track => track.stop());
+        }
+        return;
+    }
+
+    const getCameraPermission = async () => {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+        setHasCameraPermission(true);
+
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+        }
+      } catch (error) {
+        console.error('Error accessing camera:', error);
+        setHasCameraPermission(false);
+        toast({
+          variant: 'destructive',
+          title: 'Camera Access Denied',
+          description: 'Please enable camera permissions in your browser settings to use this feature.',
+        });
+      }
+    };
+
+    getCameraPermission();
+  }, [isScannerOpen, toast]);
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>, isEditing: boolean) => {
     const file = e.target.files?.[0];
@@ -320,82 +360,120 @@ export default function InventoryPage() {
           <h1 className="font-headline text-3xl font-bold tracking-tight">Inventory</h1>
           <p className="text-muted-foreground">Manage your stock and inventory here.</p>
         </div>
-        <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-          <DialogTrigger asChild>
-            <Button>
-              <PlusCircle className="mr-2 h-4 w-4" />
-              Add Product
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-lg">
-            <DialogHeader>
-              <DialogTitle>Add New Product</DialogTitle>
-              <DialogDescription>
-                Enter the details of the new product to add it to the inventory.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="grid gap-4 py-4">
-              <div className="grid grid-cols-4 items-center gap-4">
-                 <Label className="text-right">Image</Label>
-                 <div className="col-span-3">
-                   <Input id="image" type="file" className="hidden" onChange={(e) => handleImageChange(e, false)} accept="image/*"/>
-                   <Label htmlFor="image" className="cursor-pointer">
-                        <div className="w-full aspect-video rounded-md border-2 border-dashed border-muted-foreground/50 flex flex-col items-center justify-center text-muted-foreground hover:bg-muted/50 relative">
-                           {newProductImagePreview ? (
-                                <Image src={newProductImagePreview} alt="Product preview" width={150} height={84} className="object-cover rounded-md"/>
-                           ) : (
-                                <>
-                                 <ImagePlus className="h-10 w-10 mb-2"/>
-                                 <p>Upload Image</p>
-                                </>
-                           )}
-                           {isGeneratingImage && (
-                                <div className="absolute inset-0 bg-background/80 flex flex-col items-center justify-center">
-                                    <Loader2 className="h-8 w-8 animate-spin text-primary"/>
-                                    <p className="text-sm text-muted-foreground mt-2">Generating Image...</p>
-                                </div>
-                            )}
-                        </div>
-                   </Label>
-                 </div>
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="name" className="text-right">Name</Label>
-                <Input id="name" value={newProductName} onChange={(e) => setNewProductName(e.target.value)} className="col-span-3" placeholder="e.g. Maize Flour" />
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="brand" className="text-right">Brand</Label>
-                <Input id="brand" value={newProductBrand} onChange={(e) => setNewProductBrand(e.target.value)} className="col-span-3" placeholder="e.g. Soko" />
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="price" className="text-right">Price (KSH)</Label>
-                <Input id="price" type="number" value={newProductPrice} onChange={(e) => setNewProductPrice(e.target.value)} className="col-span-3" placeholder="e.g. 210" />
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="category" className="text-right">Category</Label>
-                 <div className="relative col-span-3">
-                  <Input id="category" value={newProductCategory} onChange={(e) => setNewProductCategory(e.target.value)} placeholder="e.g. Grains" />
-                  {isSuggestingCategory && <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin" />}
+        <div className="flex gap-2">
+            <Dialog open={isScannerOpen} onOpenChange={setIsScannerOpen}>
+              <DialogTrigger asChild>
+                 <Button variant="outline">
+                    <ScanLine className="mr-2 h-4 w-4" />
+                    Scan Product
+                 </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-md">
+                <DialogHeader>
+                    <DialogTitle>Scan Barcode</DialogTitle>
+                    <DialogDescription>
+                        Position the product's barcode in front of the camera.
+                    </DialogDescription>
+                </DialogHeader>
+                <div className="relative aspect-video w-full overflow-hidden rounded-md border bg-muted">
+                    <video ref={videoRef} className="h-full w-full object-cover" autoPlay playsInline muted />
+                    <div className="absolute inset-0 flex items-center justify-center">
+                        <div className="w-3/4 h-1/2 border-2 border-destructive rounded-lg" />
+                    </div>
                 </div>
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="stock" className="text-right">Stock</Label>
-                <Input id="stock" type="number" value={newProductStock} onChange={(e) => setNewProductStock(e.target.value)} className="col-span-3" placeholder="e.g. 100" />
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="unit" className="text-right">Unit</Label>
-                <Input id="unit" value={newProductUnit} onChange={(e) => setNewProductUnit(e.target.value)} className="col-span-3" placeholder="e.g. 2kg, 1 Litre, piece" />
-              </div>
-            </div>
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={resetAddForm}>Cancel</Button>
-              <Button type="submit" onClick={handleAddProduct} disabled={isUploading || isGeneratingImage}>
-                {(isUploading || isGeneratingImage) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Save Product
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+                 {hasCameraPermission === false && (
+                    <Alert variant="destructive">
+                      <AlertTitle>Camera Access Required</AlertTitle>
+                      <AlertDescription>
+                        Please allow camera access to use this feature. Check your browser settings.
+                      </AlertDescription>
+                    </Alert>
+                )}
+                <div className="text-center text-sm text-muted-foreground">
+                    Barcode scanning not yet implemented.
+                </div>
+                <DialogFooter>
+                    <Button type="button" variant="secondary" onClick={() => setIsScannerOpen(false)}>Close</Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+            <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+              <DialogTrigger asChild>
+                <Button>
+                  <PlusCircle className="mr-2 h-4 w-4" />
+                  Add Product
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-lg">
+                <DialogHeader>
+                  <DialogTitle>Add New Product</DialogTitle>
+                  <DialogDescription>
+                    Enter the details of the new product to add it to the inventory.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="grid gap-4 py-4">
+                  <div className="grid grid-cols-4 items-center gap-4">
+                     <Label className="text-right">Image</Label>
+                     <div className="col-span-3">
+                       <Input id="image" type="file" className="hidden" onChange={(e) => handleImageChange(e, false)} accept="image/*"/>
+                       <Label htmlFor="image" className="cursor-pointer">
+                            <div className="w-full aspect-video rounded-md border-2 border-dashed border-muted-foreground/50 flex flex-col items-center justify-center text-muted-foreground hover:bg-muted/50 relative">
+                               {newProductImagePreview ? (
+                                    <Image src={newProductImagePreview} alt="Product preview" width={150} height={84} className="object-cover rounded-md"/>
+                               ) : (
+                                    <>
+                                     <ImagePlus className="h-10 w-10 mb-2"/>
+                                     <p>Upload Image</p>
+                                    </>
+                               )}
+                               {isGeneratingImage && (
+                                    <div className="absolute inset-0 bg-background/80 flex flex-col items-center justify-center">
+                                        <Loader2 className="h-8 w-8 animate-spin text-primary"/>
+                                        <p className="text-sm text-muted-foreground mt-2">Generating Image...</p>
+                                    </div>
+                                )}
+                            </div>
+                       </Label>
+                     </div>
+                  </div>
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="name" className="text-right">Name</Label>
+                    <Input id="name" value={newProductName} onChange={(e) => setNewProductName(e.target.value)} className="col-span-3" placeholder="e.g. Maize Flour" />
+                  </div>
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="brand" className="text-right">Brand</Label>
+                    <Input id="brand" value={newProductBrand} onChange={(e) => setNewProductBrand(e.target.value)} className="col-span-3" placeholder="e.g. Soko" />
+                  </div>
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="price" className="text-right">Price (KSH)</Label>
+                    <Input id="price" type="number" value={newProductPrice} onChange={(e) => setNewProductPrice(e.target.value)} className="col-span-3" placeholder="e.g. 210" />
+                  </div>
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="category" className="text-right">Category</Label>
+                     <div className="relative col-span-3">
+                      <Input id="category" value={newProductCategory} onChange={(e) => setNewProductCategory(e.target.value)} placeholder="e.g. Grains" />
+                      {isSuggestingCategory && <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin" />}
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="stock" className="text-right">Stock</Label>
+                    <Input id="stock" type="number" value={newProductStock} onChange={(e) => setNewProductStock(e.target.value)} className="col-span-3" placeholder="e.g. 100" />
+                  </div>
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="unit" className="text-right">Unit</Label>
+                    <Input id="unit" value={newProductUnit} onChange={(e) => setNewProductUnit(e.target.value)} className="col-span-3" placeholder="e.g. 2kg, 1 Litre, piece" />
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button type="button" variant="outline" onClick={resetAddForm}>Cancel</Button>
+                  <Button type="submit" onClick={handleAddProduct} disabled={isUploading || isGeneratingImage}>
+                    {(isUploading || isGeneratingImage) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    Save Product
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+        </div>
       </div>
 
       {/* Edit Product Dialog */}
@@ -558,3 +636,5 @@ export default function InventoryPage() {
     </div>
   );
 }
+
+    
