@@ -107,11 +107,10 @@ export default function CashierPOSPage() {
     );
   }, [customerSearch]);
 
-  const { subtotal, tax, total } = useMemo(() => {
+  const { subtotal, total } = useMemo(() => {
     const subtotalValue = cart.reduce((acc, item) => acc + item.price * item.quantity, 0);
-    const taxValue = subtotalValue * 0.08; // 8% tax
-    const totalValue = subtotalValue + taxValue;
-    return { subtotal: subtotalValue, tax: taxValue, total: totalValue };
+    const totalValue = subtotalValue;
+    return { subtotal: subtotalValue, total: totalValue };
   }, [cart]);
   
   const change = useMemo(() => {
@@ -300,10 +299,6 @@ export default function CashierPOSPage() {
                     <div className="flex justify-between">
                       <p>Subtotal</p>
                       <p className="font-medium">KSH {subtotal.toFixed(2)}</p>
-                    </div>
-                    <div className="flex justify-between">
-                      <p>Tax (8%)</p>
-                      <p className="font-medium">KSH {tax.toFixed(2)}</p>
                     </div>
                      <div className="flex justify-between text-muted-foreground">
                       <p>Discount</p>
