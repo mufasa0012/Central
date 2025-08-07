@@ -18,26 +18,33 @@ export default function InventoryPage() {
   const [products, setProducts] = useState(initialProducts);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [newProductName, setNewProductName] = useState("");
+  const [newProductBrand, setNewProductBrand] = useState("");
   const [newProductPrice, setNewProductPrice] = useState("");
   const [newProductCategory, setNewProductCategory] = useState("");
   const [newProductStock, setNewProductStock] = useState("");
+  const [newProductUnit, setNewProductUnit] = useState("");
+
 
   const handleAddProduct = () => {
-    if (newProductName && newProductPrice && newProductCategory && newProductStock) {
+    if (newProductName && newProductBrand && newProductPrice && newProductCategory && newProductStock && newProductUnit) {
       const newProduct = {
         id: products.length + 1,
         name: newProductName,
+        brand: newProductBrand,
         price: parseFloat(newProductPrice),
         category: newProductCategory,
         stock: parseInt(newProductStock, 10),
+        unit: newProductUnit,
         image: "https://placehold.co/300x300",
-        hint: newProductName.toLowerCase(),
+        hint: `${newProductName.toLowerCase()} ${newProductBrand.toLowerCase()}`,
       };
       setProducts([...products, newProduct]);
       setNewProductName("");
+      setNewProductBrand("");
       setNewProductPrice("");
       setNewProductCategory("");
       setNewProductStock("");
+      setNewProductUnit("");
       setIsDialogOpen(false);
     }
   };
@@ -56,7 +63,7 @@ export default function InventoryPage() {
               Add Product
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-md">
+          <DialogContent className="sm:max-w-lg">
             <DialogHeader>
               <DialogTitle>Add New Product</DialogTitle>
               <DialogDescription>
@@ -66,19 +73,27 @@ export default function InventoryPage() {
             <div className="grid gap-4 py-4">
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="name" className="text-right">Name</Label>
-                <Input id="name" value={newProductName} onChange={(e) => setNewProductName(e.target.value)} className="col-span-3" placeholder="e.g. Organic Bananas" />
+                <Input id="name" value={newProductName} onChange={(e) => setNewProductName(e.target.value)} className="col-span-3" placeholder="e.g. Maize Flour" />
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="price" className="text-right">Price</Label>
-                <Input id="price" type="number" value={newProductPrice} onChange={(e) => setNewProductPrice(e.target.value)} className="col-span-3" placeholder="e.g. 1.99" />
+                <Label htmlFor="brand" className="text-right">Brand</Label>
+                <Input id="brand" value={newProductBrand} onChange={(e) => setNewProductBrand(e.target.value)} className="col-span-3" placeholder="e.g. Soko" />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="price" className="text-right">Price (KSH)</Label>
+                <Input id="price" type="number" value={newProductPrice} onChange={(e) => setNewProductPrice(e.target.value)} className="col-span-3" placeholder="e.g. 210" />
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="category" className="text-right">Category</Label>
-                <Input id="category" value={newProductCategory} onChange={(e) => setNewProductCategory(e.target.value)} className="col-span-3" placeholder="e.g. Produce" />
+                <Input id="category" value={newProductCategory} onChange={(e) => setNewProductCategory(e.target.value)} className="col-span-3" placeholder="e.g. Grains" />
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="stock" className="text-right">Stock</Label>
                 <Input id="stock" type="number" value={newProductStock} onChange={(e) => setNewProductStock(e.target.value)} className="col-span-3" placeholder="e.g. 100" />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="unit" className="text-right">Unit</Label>
+                <Input id="unit" value={newProductUnit} onChange={(e) => setNewProductUnit(e.target.value)} className="col-span-3" placeholder="e.g. 2kg, 1 Litre, piece" />
               </div>
             </div>
             <DialogFooter>
@@ -101,8 +116,10 @@ export default function InventoryPage() {
                     <span className="sr-only">Image</span>
                   </TableHead>
                   <TableHead>Name</TableHead>
+                  <TableHead>Brand</TableHead>
                   <TableHead className="hidden md:table-cell">Category</TableHead>
                   <TableHead className="hidden md:table-cell">Stock</TableHead>
+                  <TableHead className="hidden md:table-cell">Unit</TableHead>
                   <TableHead className="text-right">Price</TableHead>
                   <TableHead>
                     <span className="sr-only">Actions</span>
@@ -123,11 +140,13 @@ export default function InventoryPage() {
                       />
                     </TableCell>
                     <TableCell className="font-medium">{product.name}</TableCell>
+                    <TableCell className="font-medium">{product.brand}</TableCell>
                     <TableCell className="hidden md:table-cell">
                       <Badge variant="outline">{product.category}</Badge>
                     </TableCell>
                     <TableCell className="hidden md:table-cell">{product.stock}</TableCell>
-                    <TableCell className="text-right">${product.price.toFixed(2)}</TableCell>
+                    <TableCell className="hidden md:table-cell">{product.unit}</TableCell>
+                    <TableCell className="text-right">KSH {product.price.toFixed(2)}</TableCell>
                      <TableCell>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>

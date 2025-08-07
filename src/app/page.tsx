@@ -71,6 +71,7 @@ export default function CashierPOSPage() {
     return products.filter(
       (p) =>
         p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        p.brand.toLowerCase().includes(searchTerm.toLowerCase()) ||
         p.id.toString().includes(searchTerm)
     );
   }, [searchTerm]);
@@ -131,8 +132,8 @@ export default function CashierPOSPage() {
                    </div>
                 </div>
                 <div className="p-3 bg-card">
-                  <p className="font-semibold truncate">{product.name}</p>
-                  <p className="text-sm text-muted-foreground">${product.price.toFixed(2)}</p>
+                  <p className="font-semibold truncate">{product.name} <span className="text-sm text-muted-foreground">({product.brand})</span></p>
+                  <p className="text-sm text-muted-foreground">KSH {product.price.toFixed(2)}</p>
                 </div>
               </Card>
             ))}
@@ -215,7 +216,7 @@ export default function CashierPOSPage() {
                       <div key={item.id} className="flex items-center gap-3">
                         <Image src={item.image} alt={item.name} width={48} height={48} className="rounded-md" data-ai-hint={item.hint}/>
                         <div className="flex-grow overflow-hidden">
-                          <p className="font-medium truncate text-sm">{item.name}</p>
+                          <p className="font-medium truncate text-sm">{item.name} <span className="text-xs text-muted-foreground">({item.brand})</span></p>
                           <div className="flex items-center gap-1 text-muted-foreground">
                             <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => updateQuantity(item.id, item.quantity - 1)}>
                               <MinusCircle className="h-4 w-4" />
@@ -226,7 +227,7 @@ export default function CashierPOSPage() {
                             </Button>
                           </div>
                         </div>
-                        <p className="font-semibold text-sm">${(item.price * item.quantity).toFixed(2)}</p>
+                        <p className="font-semibold text-sm">KSH {(item.price * item.quantity).toFixed(2)}</p>
                         <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-destructive h-7 w-7" onClick={() => removeFromCart(item.id)}>
                           <X className="h-4 w-4" />
                         </Button>
@@ -241,20 +242,20 @@ export default function CashierPOSPage() {
                   <div className="space-y-2 text-sm">
                     <div className="flex justify-between">
                       <p>Subtotal</p>
-                      <p className="font-medium">${subtotal.toFixed(2)}</p>
+                      <p className="font-medium">KSH {subtotal.toFixed(2)}</p>
                     </div>
                     <div className="flex justify-between">
                       <p>Tax (8%)</p>
-                      <p className="font-medium">${tax.toFixed(2)}</p>
+                      <p className="font-medium">KSH {tax.toFixed(2)}</p>
                     </div>
                      <div className="flex justify-between text-muted-foreground">
                       <p>Discount</p>
-                      <p className="font-medium">-$0.00</p>
+                      <p className="font-medium">-KSH 0.00</p>
                     </div>
                     <Separator className="my-2" />
                     <div className="flex justify-between text-lg font-bold">
                       <p>Total</p>
-                      <p>${total.toFixed(2)}</p>
+                      <p>KSH {total.toFixed(2)}</p>
                     </div>
                   </div>
                 </>
@@ -265,7 +266,7 @@ export default function CashierPOSPage() {
               <Dialog onOpenChange={(open) => !open && cart.length === 0}>
                 <DialogTrigger asChild>
                   <Button size="lg" className="w-full text-lg">
-                    Charge ${total.toFixed(2)}
+                    Charge KSH {total.toFixed(2)}
                   </Button>
                 </DialogTrigger>
                 <DialogContent className="sm:max-w-sm">
@@ -278,7 +279,7 @@ export default function CashierPOSPage() {
                       <TabsTrigger value="card"><CreditCard className="mr-2 h-4 w-4"/>Card</TabsTrigger>
                       <TabsTrigger value="mpesa"><Smartphone className="mr-2 h-4 w-4"/>M-Pesa</TabsTrigger>
                     </TabsList>
-                    <div className="py-4 text-center text-4xl font-bold tracking-tight">${total.toFixed(2)}</div>
+                    <div className="py-4 text-center text-4xl font-bold tracking-tight">KSH {total.toFixed(2)}</div>
                     <TabsContent value="cash">
                       <div className="space-y-4">
                         <p className="text-center text-muted-foreground">Customer pays with cash.</p>

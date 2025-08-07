@@ -4,11 +4,11 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 
 const salesData = [
-  { id: "SALE001", customer: "John Doe", date: "2024-07-28", total: 45.50, status: "Paid" },
-  { id: "SALE002", customer: "Jane Smith", date: "2024-07-28", total: 120.00, status: "Paid" },
-  { id: "SALE003", customer: "Walk-in", date: "2024-07-27", total: 15.75, status: "Paid" },
-  { id: "SALE004", customer: "Robert Brown", date: "2024-07-27", total: 88.20, status: "Refunded" },
-  { id: "SALE005", customer: "Walk-in", date: "2024-07-26", total: 32.10, status: "Paid" },
+  { id: "SALE001", customer: "John Doe", date: "2024-07-28", total: 4550.00, status: "Paid" },
+  { id: "SALE002", customer: "Jane Smith", date: "2024-07-28", total: 12000.00, status: "Paid" },
+  { id: "SALE003", customer: "Walk-in", date: "2024-07-27", total: 1575.00, status: "Paid" },
+  { id: "SALE004", customer: "Robert Brown", date: "2024-07-27", total: 8820.00, status: "Refunded" },
+  { id: "SALE005", customer: "Walk-in", date: "2024-07-26", total: 3210.00, status: "Paid" },
 ];
 
 export default function SalesPage() {
@@ -44,7 +44,7 @@ export default function SalesPage() {
                     <TableCell className="hidden sm:table-cell text-center">
                        <Badge variant={sale.status === 'Paid' ? 'secondary' : 'destructive'}>{sale.status}</Badge>
                     </TableCell>
-                    <TableCell className="text-right">${sale.total.toFixed(2)}</TableCell>
+                    <TableCell className="text-right">KSH {sale.total.toFixed(2)}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>

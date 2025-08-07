@@ -1,16 +1,14 @@
 export const products = [
-  { id: 1, name: "Organic Apples", price: 2.99, category: "Produce", image: "https://placehold.co/300x300", hint: "apples fruit", stock: 100 },
-  { id: 2, name: "Whole Wheat Bread", price: 4.50, category: "Bakery", image: "https://placehold.co/300x300", hint: "bread bakery", stock: 50 },
-  { id: 3, name: "Free-Range Eggs", price: 5.25, category: "Dairy", image: "https://placehold.co/300x300", hint: "eggs dairy", stock: 75 },
-  { id: 4, name: "Almond Milk", price: 3.75, category: "Dairy", image: "https://placehold.co/300x300", hint: "almond milk", stock: 60 },
-  { id: 5, name: "Avocado", price: 1.99, category: "Produce", image: "https://placehold.co/300x300", hint: "avocado fruit", stock: 80 },
-  { id: 6, name: "Chicken Breast", price: 9.99, category: "Meat", image: "https://placehold.co/300x300", hint: "chicken meat", stock: 40 },
-  { id: 7, name: "Quinoa", price: 6.49, category: "Grains", image: "https://placehold.co/300x300", hint: "quinoa grain", stock: 90 },
-  { id: 8, name: "Greek Yogurt", price: 4.99, category: "Dairy", image: "https://placehold.co/300x300", hint: "yogurt dairy", stock: 65 },
-  { id: 9, name: "Olive Oil", price: 12.99, category: "Pantry", image: "https://placehold.co/300x300", hint: "olive oil", stock: 30 },
-  { id: 10, name: "Dark Chocolate", price: 3.99, category: "Snacks", image: "https://placehold.co/300x300", hint: "chocolate snack", stock: 120 },
-  { id: 11, name: "Sparkling Water", price: 1.50, category: "Beverages", image: "https://placehold.co/300x300", hint: "water beverage", stock: 150 },
-  { id: 12, name: "Coffee Beans", price: 15.99, category: "Beverages", image: "https://placehold.co/300x300", hint: "coffee beans", stock: 25 },
+  { id: 1, name: "Maize Flour", brand: "Soko", price: 210, category: "Grains", image: "https://placehold.co/300x300", hint: "maize flour", stock: 100, unit: "2kg" },
+  { id: 2, name: "Maize Flour", brand: "Ajab", price: 205, category: "Grains", image: "https://placehold.co/300x300", hint: "maize flour", stock: 120, unit: "2kg" },
+  { id: 3, name: "Cooking Oil", brand: "Fresh Fri", price: 350, category: "Pantry", image: "https://placehold.co/300x300", hint: "cooking oil", stock: 80, unit: "1 Litre" },
+  { id: 4, name: "Milk", brand: "Brookside", price: 65, category: "Dairy", image: "https://placehold.co/300x300", hint: "milk dairy", stock: 75, unit: "500ml" },
+  { id: 5, name: "Bread", brand: "Supa Loaf", price: 70, category: "Bakery", image: "https://placehold.co/300x300", hint: "bread bakery", stock: 50, unit: "400g" },
+  { id: 6, name: "Yogurt", brand: "Delamere", price: 150, category: "Dairy", image: "https://placehold.co/300x300", hint: "yogurt dairy", stock: 65, unit: "400ml" },
+  { id: 7, name: "Soap", brand: "Geisha", price: 50, category: "Detergents", image: "https://placehold.co/300x300", hint: "soap bar", stock: 200, unit: "piece" },
+  { id: 8, name: "Rice", brand: "Daawat", price: 400, category: "Grains", image: "https://placehold.co/300x300", hint: "rice grain", stock: 90, unit: "2kg" },
+  { id: 9, name: "Sugar", brand: "Kabras", price: 420, category: "Pantry", image: "https://placehold.co/300x300", hint: "sugar pantry", stock: 150, unit: "2kg" },
+  { id: 10, name: "Soda", brand: "Coca-Cola", price: 40, category: "Beverages", image: "https://placehold.co/300x300", hint: "soda beverage", stock: 300, unit: "300ml" },
 ];
 
 export const loyaltyMembers = [
