@@ -13,6 +13,7 @@ import {z} from 'genkit';
 const GenerateProductImageInputSchema = z.object({
   productName: z.string().describe('The name of the product.'),
   brand: z.string().describe('The brand of the product.'),
+  description: z.string().optional().describe('An optional description of the product\'s appearance (e.g., color, shape, packaging).'),
 });
 export type GenerateProductImageInput = z.infer<typeof GenerateProductImageInputSchema>;
 
@@ -31,10 +32,10 @@ const generateProductImageFlow = ai.defineFlow(
     inputSchema: GenerateProductImageInputSchema,
     outputSchema: GenerateProductImageOutputSchema,
   },
-  async ({productName, brand}) => {
+  async ({productName, brand, description}) => {
     const {media} = await ai.generate({
       model: 'googleai/gemini-2.0-flash-preview-image-generation',
-      prompt: `Generate a photorealistic image of a product named "${productName}" from the brand "${brand}". The product should be on a clean, white background.`,
+      prompt: `Generate a photorealistic image of a product named "${productName}" from the brand "${brand}". The product should be on a clean, white background. ${description ? `Additional details: ${description}` : ''}`,
       config: {
         responseModalities: ['TEXT', 'IMAGE'],
       },

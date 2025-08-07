@@ -21,6 +21,7 @@ import { generateProductImage } from "@/ai/flows/generate-product-image-flow";
 import { recognizeProductFromImage } from "@/ai/flows/recognize-product-flow";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger, } from "@/components/ui/alert-dialog";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
+import { Textarea } from "@/components/ui/textarea";
 
 
 // Helper function to convert data URI to File
@@ -44,6 +45,7 @@ export default function InventoryPage() {
   // State for the "Add Product" dialog
   const [newProductName, setNewProductName] = useState("");
   const [newProductBrand, setNewProductBrand] = useState("");
+  const [newProductDescription, setNewProductDescription] = useState("");
   const [newProductPrice, setNewProductPrice] = useState("");
   const [newProductCategory, setNewProductCategory] = useState("");
   const [newProductStock, setNewProductStock] = useState("");
@@ -114,7 +116,11 @@ export default function InventoryPage() {
       const timer = setTimeout(async () => {
         setIsGeneratingImage(true);
         try {
-          const result = await generateProductImage({ productName: newProductName, brand: newProductBrand });
+          const result = await generateProductImage({ 
+            productName: newProductName, 
+            brand: newProductBrand,
+            description: newProductDescription,
+          });
           if (result.imageUrl) {
             setNewProductImagePreview(result.imageUrl);
             setGeneratedImageDataUri(result.imageUrl);
@@ -127,7 +133,7 @@ export default function InventoryPage() {
       }, 1000); // Debounce for 1s
       return () => clearTimeout(timer);
     }
-  }, [newProductName, newProductBrand]);
+  }, [newProductName, newProductBrand, newProductDescription, newProductImage]);
 
   useEffect(() => {
     if (!isScannerOpen) {
@@ -179,6 +185,7 @@ export default function InventoryPage() {
   const resetAddForm = () => {
     setNewProductName("");
     setNewProductBrand("");
+    setNewProductDescription("");
     setNewProductPrice("");
     setNewProductCategory("");
     setNewProductStock("");
@@ -489,6 +496,17 @@ export default function InventoryPage() {
                   <div className="grid grid-cols-4 items-center gap-4">
                     <Label htmlFor="brand" className="text-right">Brand</Label>
                     <Input id="brand" value={newProductBrand} onChange={(e) => setNewProductBrand(e.target.value)} className="col-span-3" placeholder="e.g. Soko" />
+                  </div>
+                   <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="description" className="text-right">Description</Label>
+                    <Textarea 
+                      id="description" 
+                      value={newProductDescription} 
+                      onChange={(e) => setNewProductDescription(e.target.value)} 
+                      className="col-span-3" 
+                      placeholder="e.g. 2kg packet, red and yellow packaging" 
+                      rows={2}
+                    />
                   </div>
                   <div className="grid grid-cols-4 items-center gap-4">
                     <Label htmlFor="price" className="text-right">Price (KSH)</Label>
