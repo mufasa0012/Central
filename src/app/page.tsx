@@ -110,11 +110,11 @@ export default function CashierPOSPage() {
   }, [cart]);
 
   return (
-    <div className="space-y-4 md:space-y-6">
-      <h1 className="font-headline text-3xl font-bold tracking-tight">Cashier POS</h1>
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
-        <div className="lg:col-span-2">
-          <Card className="mb-6">
+    <div className="flex flex-col h-full">
+      <h1 className="font-headline text-3xl font-bold tracking-tight mb-4 md:mb-6">Cashier POS</h1>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start flex-1">
+        <div className="lg:col-span-2 space-y-6 h-full flex flex-col">
+          <Card>
             <CardContent className="p-4">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
@@ -131,42 +131,44 @@ export default function CashierPOSPage() {
             </CardContent>
           </Card>
 
-          {isLoadingProducts ? (
-            <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
-              {[...Array(8)].map((_, i) => (
-                <Card key={i} className="overflow-hidden">
-                  <div className="relative aspect-square bg-muted animate-pulse" />
-                  <div className="p-3 bg-card">
-                    <div className="space-y-2">
-                       <div className="h-4 bg-muted animate-pulse rounded-md" />
-                       <div className="h-3 w-1/2 bg-muted animate-pulse rounded-md" />
+          <div className="flex-1 overflow-y-auto">
+            {isLoadingProducts ? (
+              <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
+                {[...Array(8)].map((_, i) => (
+                  <Card key={i} className="overflow-hidden">
+                    <div className="relative aspect-square bg-muted animate-pulse" />
+                    <div className="p-3 bg-card">
+                      <div className="space-y-2">
+                         <div className="h-4 bg-muted animate-pulse rounded-md" />
+                         <div className="h-3 w-1/2 bg-muted animate-pulse rounded-md" />
+                      </div>
                     </div>
-                  </div>
-                </Card>
-              ))}
+                  </Card>
+                ))}
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
+                {filteredProducts.map((product) => (
+                  <Card 
+                    key={product.id} 
+                    className="overflow-hidden cursor-pointer hover:shadow-lg transition-shadow duration-200 group"
+                    onClick={() => addToCart(product)}
+                  >
+                    <div className="relative aspect-square">
+                       <Image src={product.image} alt={product.name} fill className="object-cover" data-ai-hint={product.hint} />
+                       <div className="absolute inset-0 bg-black/20 group-hover:bg-black/40 transition-colors duration-200 flex items-center justify-center">
+                          <PlusCircle className="h-10 w-10 text-white/70 group-hover:text-white transform group-hover:scale-110 transition-transform duration-200" />
+                       </div>
+                    </div>
+                    <div className="p-3 bg-card">
+                      <p className="font-semibold truncate">{product.name} <span className="text-sm text-muted-foreground">({product.brand})</span></p>
+                      <p className="text-sm text-muted-foreground">KSH {product.price.toFixed(2)}</p>
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            )}
             </div>
-          ) : (
-            <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
-              {filteredProducts.map((product) => (
-                <Card 
-                  key={product.id} 
-                  className="overflow-hidden cursor-pointer hover:shadow-lg transition-shadow duration-200 group"
-                  onClick={() => addToCart(product)}
-                >
-                  <div className="relative aspect-square">
-                     <Image src={product.image} alt={product.name} fill className="object-cover" data-ai-hint={product.hint} />
-                     <div className="absolute inset-0 bg-black/20 group-hover:bg-black/40 transition-colors duration-200 flex items-center justify-center">
-                        <PlusCircle className="h-10 w-10 text-white/70 group-hover:text-white transform group-hover:scale-110 transition-transform duration-200" />
-                     </div>
-                  </div>
-                  <div className="p-3 bg-card">
-                    <p className="font-semibold truncate">{product.name} <span className="text-sm text-muted-foreground">({product.brand})</span></p>
-                    <p className="text-sm text-muted-foreground">KSH {product.price.toFixed(2)}</p>
-                  </div>
-                </Card>
-              ))}
-            </div>
-          )}
         </div>
 
         <div className="lg:col-span-1">
