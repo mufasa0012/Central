@@ -7,10 +7,11 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/componen
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogClose } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ScanLine, Search, PlusCircle, MinusCircle, Trash2, X, CreditCard, Landmark, Smartphone } from "lucide-react";
+import { ScanLine, Search, PlusCircle, MinusCircle, Trash2, X, CreditCard, Landmark, Smartphone, UserPlus, Award } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { Badge } from "@/components/ui/badge";
 
 const products = [
   { id: 1, name: "Organic Apples", price: 2.99, category: "Produce", image: "https://placehold.co/300x300", hint: "apples fruit" },
@@ -27,12 +28,23 @@ const products = [
   { id: 12, name: "Coffee Beans", price: 15.99, category: "Beverages", image: "https://placehold.co/300x300", hint: "coffee beans" },
 ];
 
+const loyaltyMembers = [
+  { id: "CUST001", name: "John Doe", email: "john.doe@example.com", points: 1250 },
+  { id: "CUST002", name: "Jane Smith", email: "jane.smith@example.com", points: 850 },
+  { id: "CUST003", name: "Alice Johnson", email: "alice.j@example.com", points: 2400 },
+  { id: "CUST004", name: "Robert Brown", email: "robert.brown@example.com", points: 450 },
+  { id: "CUST005", name: "Emily Davis", email: "emily.d@example.com", points: 3000 },
+];
+
 type Product = typeof products[0];
 type CartItem = Product & { quantity: number };
+type LoyaltyCustomer = typeof loyaltyMembers[0];
 
 export default function CashierPOSPage() {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
+  const [customerSearch, setCustomerSearch] = useState("");
+  const [activeCustomer, setActiveCustomer] = useState<LoyaltyCustomer | null>(null);
   const [isClient, setIsClient] = useState(false);
   const { toast } = useToast();
 
@@ -70,6 +82,7 @@ export default function CashierPOSPage() {
   
   const clearCart = () => {
     setCart([]);
+    setActiveCustomer(null);
   }
 
   const filteredProducts = useMemo(() => {
@@ -80,6 +93,15 @@ export default function CashierPOSPage() {
         p.id.toString().includes(searchTerm)
     );
   }, [searchTerm]);
+
+  const filteredCustomers = useMemo(() => {
+    if (!customerSearch) return loyaltyMembers;
+    return loyaltyMembers.filter(
+      (c) =>
+        c.name.toLowerCase().includes(customerSearch.toLowerCase()) ||
+        c.id.toLowerCase().includes(customerSearch.toLowerCase())
+    );
+  }, [customerSearch]);
 
   const { subtotal, tax, total } = useMemo(() => {
     const subtotalValue = cart.reduce((acc, item) => acc + item.price * item.quantity, 0);
@@ -149,10 +171,62 @@ export default function CashierPOSPage() {
               </CardTitle>
             </CardHeader>
             <CardContent>
+                {activeCustomer ? (
+                  <div className="bg-accent/20 border border-accent/50 rounded-lg p-3 mb-4 text-sm">
+                    <div className="flex justify-between items-center">
+                       <p className="font-semibold text-accent-foreground">{activeCustomer.name}</p>
+                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setActiveCustomer(null)}>
+                           <X className="h-4 w-4 text-muted-foreground"/>
+                        </Button>
+                    </div>
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <Award className="h-4 w-4 text-accent" />
+                      <span>{activeCustomer.points.toLocaleString()} points</span>
+                    </div>
+                  </div>
+                ) : (
+                <Dialog>
+                    <DialogTrigger asChild>
+                       <Button variant="outline" className="w-full mb-4">
+                        <UserPlus className="mr-2 h-4 w-4"/>
+                        Add Loyalty Customer
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                      <DialogHeader>
+                        <DialogTitle>Find Loyalty Member</DialogTitle>
+                      </DialogHeader>
+                      <div className="relative mt-4">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                        <Input 
+                          placeholder="Search by name or ID..." 
+                          className="pl-10"
+                          value={customerSearch}
+                          onChange={(e) => setCustomerSearch(e.target.value)}
+                        />
+                      </div>
+                      <ScrollArea className="h-[200px] mt-4">
+                        <div className="space-y-2">
+                        {filteredCustomers.map(customer => (
+                          <DialogClose asChild key={customer.id}>
+                            <Button variant="ghost" className="w-full justify-start h-auto" onClick={() => setActiveCustomer(customer)}>
+                                <div>
+                                  <p>{customer.name}</p>
+                                  <p className="text-xs text-muted-foreground">{customer.id}</p>
+                                </div>
+                            </Button>
+                          </DialogClose>
+                        ))}
+                        </div>
+                      </ScrollArea>
+                    </DialogContent>
+                </Dialog>
+                )}
               <ScrollArea className="h-[300px] pr-4">
                 {cart.length === 0 ? (
                   <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
                     <p>Your cart is empty</p>
+                    <p className="text-xs">Add products to get started</p>
                   </div>
                 ) : (
                   <div className="flex flex-col gap-4">

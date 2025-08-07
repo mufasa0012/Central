@@ -3,7 +3,7 @@
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { Sidebar, SidebarHeader, SidebarContent, SidebarMenu, SidebarMenuItem, SidebarMenuButton } from '@/components/ui/sidebar';
-import { LayoutGrid, Boxes, BarChart3, Banknote, Settings } from 'lucide-react';
+import { LayoutGrid, Boxes, BarChart3, Banknote, Settings, Award } from 'lucide-react';
 
 export function AppShell() {
   const pathname = usePathname();
@@ -31,6 +31,11 @@ export function AppShell() {
           <SidebarMenuItem>
             <SidebarMenuButton href="/reports" tooltip="Reports" asChild isActive={pathname === '/reports'}>
               <Link href="/reports"><BarChart3 /><span>Reports</span></Link>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+           <SidebarMenuItem>
+            <SidebarMenuButton href="/loyalty" tooltip="Loyalty" asChild isActive={pathname === '/loyalty'}>
+              <Link href="/loyalty"><Award /><span>Loyalty</span></Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
           <SidebarMenuItem>
