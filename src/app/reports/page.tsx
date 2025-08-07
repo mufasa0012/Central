@@ -159,7 +159,7 @@ export default function ReportsPage() {
                       <TableRow key={sale.id}>
                         <TableCell>
                           <div className="font-medium">{sale.customer}</div>
-                          <div className="text-sm text-muted-foreground">{new Date(sale.date).toLocaleDateString()}</div>
+                          <div className="text-sm text-muted-foreground">{new Date(sale.date).toLocaleDateString('en-CA')}</div>
                         </TableCell>
                         <TableCell className="text-right">
                           <Badge variant={sale.status === 'Paid' ? 'secondary' : 'destructive'} className="mr-2">{sale.status}</Badge>
