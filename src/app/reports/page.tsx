@@ -2,74 +2,81 @@
 "use client";
 
 import { useState, useEffect, useMemo } from 'react';
-import { collection, onSnapshot } from "firebase/firestore";
+import { collection, onSnapshot, query, orderBy, limit } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import type { Product } from "@/lib/data";
+import type { Product, Sale } from "@/lib/data";
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { ChartContainer, ChartTooltipContent } from '@/components/ui/chart';
-import { DollarSign, Package, ShoppingCart } from 'lucide-react';
+import { DollarSign, Package, ShoppingCart, Loader2 } from 'lucide-react';
 
-const salesData = [
-  { id: "SALE001", customer: "John Doe", date: "2024-07-28", total: 4550.00, status: "Paid" },
-  { id: "SALE002", customer: "Jane Smith", date: "2024-07-28", total: 12000.00, status: "Paid" },
-  { id: "SALE003", customer: "Walk-in", date: "2024-07-27", total: 1575.00, status: "Paid" },
-  { id: "SALE004", customer: "Robert Brown", date: "2024-07-27", total: 8820.00, status: "Refunded" },
-  { id: "SALE005", customer: "Walk-in", date: "2024-07-26", total: 3210.00, status: "Paid" },
-  { id: "SALE006", customer: "Emily Davis", date: "2024-07-26", total: 5500.00, status: "Paid" },
-  { id: "SALE007", customer: "Walk-in", date: "2024-07-25", total: 1250.00, status: "Paid" },
 
-];
-
-const formatDateForChart = (dateStr: string) => {
-    // Input: "2024-07-28"
-    // Output: "Jul 28"
-    const [year, month, day] = dateStr.split('-');
-    const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+const formatDateForChart = (date: Date) => {
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
 }
 
 
 export default function ReportsPage() {
   const [products, setProducts] = useState<Product[]>([]);
+  const [sales, setSales] = useState<Sale[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   
   useEffect(() => {
     const productsCollection = collection(db, "products");
-    const unsubscribe = onSnapshot(productsCollection, (snapshot) => {
+    const unsubscribeProducts = onSnapshot(productsCollection, (snapshot) => {
         const productsData = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })) as Product[];
         setProducts(productsData);
     });
-    return () => unsubscribe();
+
+    const salesQuery = query(collection(db, "sales"), orderBy("createdAt", "desc"));
+    const unsubscribeSales = onSnapshot(salesQuery, (snapshot) => {
+        const salesData = snapshot.docs.map((doc) => {
+            const data = doc.data();
+            return {
+                id: doc.id,
+                ...data,
+                createdAt: data.createdAt?.toDate() // Convert Firestore Timestamp to JS Date
+            } as Sale;
+        });
+        setSales(salesData);
+        setIsLoading(false);
+    });
+
+    return () => {
+        unsubscribeProducts();
+        unsubscribeSales();
+    };
   }, []);
 
-  const totalRevenue = useMemo(() => {
-    return salesData
-      .filter(sale => sale.status === 'Paid')
-      .reduce((acc, sale) => acc + sale.total, 0);
-  }, []);
-
-  const totalSales = useMemo(() => {
-     return salesData.filter(sale => sale.status === 'Paid').length;
-  }, []);
+  const { totalRevenue, totalSales, recentSales } = useMemo(() => {
+    const paidSales = sales.filter(sale => sale.status === 'Paid');
+    const revenue = paidSales.reduce((acc, sale) => acc + sale.total, 0);
+    return {
+        totalRevenue: revenue,
+        totalSales: paidSales.length,
+        recentSales: sales.slice(0, 5) // Use the full sorted sales list
+    };
+  }, [sales]);
 
   const chartData = useMemo(() => {
     const dailySales: {[key: string]: number} = {};
-    salesData.forEach(sale => {
-      if (sale.status === 'Paid') {
-        const chartDate = formatDateForChart(sale.date);
+    sales.forEach(sale => {
+      if (sale.status === 'Paid' && sale.createdAt) {
+        const chartDate = formatDateForChart(sale.createdAt);
         if (!dailySales[chartDate]) {
           dailySales[chartDate] = 0;
         }
         dailySales[chartDate] += sale.total;
       }
     });
+    // Sort dates chronologically for the chart
     return Object.keys(dailySales).map(date => ({
       date,
       total: dailySales[date]
     })).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-  }, []);
+  }, [sales]);
 
 
   return (
@@ -79,6 +86,12 @@ export default function ReportsPage() {
         <p className="text-muted-foreground">An overview of your business performance.</p>
       </div>
       
+       {isLoading ? (
+        <div className="flex justify-center items-center h-64">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      ) : (
+      <>
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -163,15 +176,14 @@ export default function ReportsPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {salesData.slice(0, 5).map((sale) => (
+                    {recentSales.map((sale) => (
                       <TableRow key={sale.id}>
                         <TableCell>
-                          <div className="font-medium">{sale.customer}</div>
-                          <div className="text-sm text-muted-foreground">{sale.date}</div>
+                          <div className="font-medium">{sale.customer.name}</div>
+                          <div className="text-sm text-muted-foreground">{sale.createdAt?.toLocaleDateString()}</div>
                         </TableCell>
                         <TableCell className="text-right">
                           <Badge variant={sale.status === 'Paid' ? 'secondary' : 'destructive'} className="mr-2">{sale.status}</Badge>
-
                           KSH {sale.total.toFixed(2)}
                         </TableCell>
                       </TableRow>
@@ -182,7 +194,8 @@ export default function ReportsPage() {
           </CardContent>
         </Card>
       </div>
-
+      </>
+      )}
     </div>
   );
 }

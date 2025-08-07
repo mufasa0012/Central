@@ -1,17 +1,37 @@
 
+"use client";
+
+import { useState, useEffect } from "react";
+import { collection, onSnapshot, query, orderBy } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-
-const salesData = [
-  { id: "SALE001", customer: "John Doe", date: "2024-07-28", total: 4550.00, status: "Paid" },
-  { id: "SALE002", customer: "Jane Smith", date: "2024-07-28", total: 12000.00, status: "Paid" },
-  { id: "SALE003", customer: "Walk-in", date: "2024-07-27", total: 1575.00, status: "Paid" },
-  { id: "SALE004", customer: "Robert Brown", date: "2024-07-27", total: 8820.00, status: "Refunded" },
-  { id: "SALE005", customer: "Walk-in", date: "2024-07-26", total: 3210.00, status: "Paid" },
-];
+import { Loader2 } from "lucide-react";
+import type { Sale } from "@/lib/data";
 
 export default function SalesPage() {
+    const [sales, setSales] = useState<Sale[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
+
+    useEffect(() => {
+        const salesQuery = query(collection(db, "sales"), orderBy("createdAt", "desc"));
+        const unsubscribe = onSnapshot(salesQuery, (snapshot) => {
+            const salesData = snapshot.docs.map(doc => {
+                 const data = doc.data();
+                 return {
+                    id: doc.id,
+                    ...data,
+                    createdAt: data.createdAt?.toDate() // Convert Timestamp to Date
+                 } as Sale
+            });
+            setSales(salesData);
+            setIsLoading(false);
+        });
+
+        return () => unsubscribe();
+    }, []);
+
   return (
     <div className="space-y-6">
       <div className="space-y-1">
@@ -20,10 +40,15 @@ export default function SalesPage() {
       </div>
       <Card>
         <CardHeader>
-          <CardTitle>Recent Sales</CardTitle>
+          <CardTitle>All Sales</CardTitle>
           <CardDescription>A log of all completed sales transactions.</CardDescription>
         </CardHeader>
         <CardContent>
+          {isLoading ? (
+             <div className="flex justify-center items-center h-64">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+             </div>
+          ) : (
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>
@@ -31,16 +56,18 @@ export default function SalesPage() {
                   <TableHead>Sale ID</TableHead>
                   <TableHead>Customer</TableHead>
                   <TableHead className="hidden sm:table-cell">Date</TableHead>
+                  <TableHead className="hidden sm:table-cell">Payment Method</TableHead>
                   <TableHead className="hidden sm:table-cell text-center">Status</TableHead>
                   <TableHead className="text-right">Total</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {salesData.map((sale) => (
+                {sales.map((sale) => (
                   <TableRow key={sale.id}>
-                    <TableCell className="font-medium">{sale.id}</TableCell>
-                    <TableCell>{sale.customer}</TableCell>
-                    <TableCell className="hidden sm:table-cell">{sale.date}</TableCell>
+                    <TableCell className="font-medium truncate max-w-[100px]">{sale.id}</TableCell>
+                    <TableCell>{sale.customer.name}</TableCell>
+                    <TableCell className="hidden sm:table-cell">{sale.createdAt?.toLocaleString()}</TableCell>
+                    <TableCell className="hidden sm:table-cell">{sale.paymentMethod}</TableCell>
                     <TableCell className="hidden sm:table-cell text-center">
                        <Badge variant={sale.status === 'Paid' ? 'secondary' : 'destructive'}>{sale.status}</Badge>
                     </TableCell>
@@ -50,6 +77,7 @@ export default function SalesPage() {
               </TableBody>
             </Table>
           </div>
+          )}
         </CardContent>
       </Card>
     </div>

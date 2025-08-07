@@ -3,7 +3,7 @@
 
 import React, { useState, useMemo, useEffect } from "react";
 import Image from "next/image";
-import { collection, onSnapshot } from "firebase/firestore";
+import { collection, onSnapshot, addDoc, serverTimestamp, doc, updateDoc, runTransaction } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -15,31 +15,29 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScanLine, Search, PlusCircle, MinusCircle, Trash2, X, CreditCard, Landmark, Smartphone, UserPlus, Award, Loader2, RefreshCw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
-import type { Product } from "@/lib/data";
-import { loyaltyMembers as initialLoyaltyMembers } from "@/lib/data";
+import type { Product, LoyaltyMember } from "@/lib/data";
 import { Label } from "@/components/ui/label";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 
-const loyaltyMembers = initialLoyaltyMembers;
-
 type CartItem = Product & { quantity: number; useWholesale: boolean };
-type LoyaltyCustomer = typeof loyaltyMembers[0];
 
 export default function CashierPOSPage() {
   const [products, setProducts] = useState<Product[]>([]);
+  const [loyaltyMembers, setLoyaltyMembers] = useState<LoyaltyMember[]>([]);
   const [isLoadingProducts, setIsLoadingProducts] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [customerSearch, setCustomerSearch] = useState("");
-  const [activeCustomer, setActiveCustomer] = useState<LoyaltyCustomer | null>(null);
+  const [activeCustomer, setActiveCustomer] = useState<LoyaltyMember | null>(null);
   const [cashGiven, setCashGiven] = useState("");
   const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
     const productsCollection = collection(db, "products");
-    const unsubscribe = onSnapshot(productsCollection, (snapshot) => {
+    const unsubscribeProducts = onSnapshot(productsCollection, (snapshot) => {
       const productsData = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })) as Product[];
       setProducts(productsData);
       setIsLoadingProducts(false);
@@ -52,7 +50,18 @@ export default function CashierPOSPage() {
       });
       setIsLoadingProducts(false);
     });
-    return () => unsubscribe();
+
+    const loyaltyCollection = collection(db, "loyaltyMembers");
+    const unsubscribeLoyalty = onSnapshot(loyaltyCollection, (snapshot) => {
+      const loyaltyData = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })) as LoyaltyMember[];
+      setLoyaltyMembers(loyaltyData);
+    });
+
+
+    return () => {
+        unsubscribeProducts();
+        unsubscribeLoyalty();
+    };
   }, [toast]);
   
 
@@ -60,15 +69,41 @@ export default function CashierPOSPage() {
     setCart((prevCart) => {
       const existingItem = prevCart.find((item) => item.id === product.id);
       if (existingItem) {
+        if(existingItem.quantity >= product.stock) {
+            toast({
+                variant: "destructive",
+                title: "Stock limit reached",
+                description: `Cannot add more ${product.name} to the cart.`,
+            });
+            return prevCart;
+        }
         return prevCart.map((item) =>
           item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item
         );
       }
+        if(product.stock < 1) {
+            toast({
+                variant: "destructive",
+                title: "Out of stock",
+                description: `${product.name} is currently out of stock.`,
+            });
+            return prevCart;
+        }
       return [...prevCart, { ...product, quantity: 1, useWholesale: false }];
     });
   };
 
   const updateQuantity = (productId: string, newQuantity: number) => {
+     const productInCart = cart.find(item => item.id === productId);
+     if (productInCart && newQuantity > productInCart.stock) {
+        toast({
+            variant: "destructive",
+            title: "Stock limit reached",
+            description: `Only ${productInCart.stock} units of ${productInCart.name} available.`,
+        });
+        return;
+     }
+
     if (newQuantity <= 0) {
       removeFromCart(productId);
     } else {
@@ -115,11 +150,11 @@ export default function CashierPOSPage() {
         c.name.toLowerCase().includes(customerSearch.toLowerCase()) ||
         c.id.toLowerCase().includes(customerSearch.toLowerCase())
     );
-  }, [customerSearch]);
+  }, [customerSearch, loyaltyMembers]);
 
   const { subtotal, total } = useMemo(() => {
     const subtotalValue = cart.reduce((acc, item) => {
-        const price = item.useWholesale ? (item.wholesalePrice || item.price) : item.price;
+        const price = item.useWholesale && item.wholesalePrice ? item.wholesalePrice : item.price;
         return acc + price * item.quantity;
     }, 0);
     const totalValue = subtotalValue;
@@ -138,16 +173,84 @@ export default function CashierPOSPage() {
     }
   }, [isPaymentDialogOpen]);
 
-  const handleCompletePayment = () => {
-    toast({ title: "Success", description: "Payment completed." });
-    clearCart();
-    setIsPaymentDialogOpen(false);
+  const handleCompletePayment = async (paymentMethod: 'Cash' | 'Card' | 'M-Pesa') => {
+    setIsLoading(true);
+    try {
+        // Use a transaction to ensure atomic updates
+        await runTransaction(db, async (transaction) => {
+            const saleItems = cart.map(item => {
+                const price = item.useWholesale && item.wholesalePrice ? item.wholesalePrice : item.price;
+                return {
+                    productId: item.id,
+                    name: item.name,
+                    brand: item.brand,
+                    quantity: item.quantity,
+                    price: price,
+                    total: price * item.quantity
+                }
+            });
+
+            // 1. Decrement stock for each product
+            for (const item of cart) {
+                const productRef = doc(db, "products", item.id);
+                const productDoc = await transaction.get(productRef);
+                if (!productDoc.exists()) {
+                    throw new Error(`Product ${item.name} not found.`);
+                }
+                const newStock = productDoc.data().stock - item.quantity;
+                if (newStock < 0) {
+                    throw new Error(`Not enough stock for ${item.name}.`);
+                }
+                transaction.update(productRef, { stock: newStock });
+            }
+            
+            // 2. Add loyalty points if a customer is selected
+            let newPoints = 0;
+            if (activeCustomer) {
+                const loyaltyRef = doc(db, "loyaltyMembers", activeCustomer.id);
+                const loyaltyDoc = await transaction.get(loyaltyRef);
+                 if (!loyaltyDoc.exists()) {
+                    throw new Error(`Loyalty member ${activeCustomer.name} not found.`);
+                }
+                // Award 1 point for every KSH 100 spent
+                const pointsEarned = Math.floor(total / 100);
+                newPoints = loyaltyDoc.data().points + pointsEarned;
+                transaction.update(loyaltyRef, { points: newPoints });
+            }
+
+            // 3. Create a new sale record
+            const salesCollection = collection(db, "sales");
+            transaction.set(doc(salesCollection), {
+                items: saleItems,
+                subtotal,
+                total,
+                paymentMethod,
+                status: 'Paid',
+                customer: activeCustomer ? { id: activeCustomer.id, name: activeCustomer.name } : { id: 'Walk-in', name: 'Walk-in' },
+                createdAt: serverTimestamp()
+            });
+        });
+
+        toast({ title: "Success", description: "Payment completed." });
+        clearCart();
+        setIsPaymentDialogOpen(false);
+
+    } catch (error: any) {
+        console.error("Payment failed:", error);
+        toast({
+            variant: "destructive",
+            title: "Payment Failed",
+            description: error.message || "An unexpected error occurred."
+        });
+    } finally {
+        setIsLoading(false);
+    }
   };
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 items-start h-full">
         {/* Products Section */}
-        <div className="lg:col-span-2 flex flex-col gap-6 h-full order-1 md:order-1">
+        <div className="lg:col-span-2 flex flex-col gap-6 h-full order-last md:order-first">
           <div className="flex-1 flex flex-col gap-6 min-h-0">
             <h1 className="font-headline text-3xl font-bold tracking-tight">Cashier POS</h1>
             <Card>
@@ -211,7 +314,7 @@ export default function CashierPOSPage() {
         </div>
 
         {/* Cart Section */}
-        <div className="lg:col-span-1 h-full flex flex-col order-2 md:order-2">
+        <div className="lg:col-span-1 h-full flex flex-col order-first md:order-last">
           <Card className="shadow-lg flex-1 flex flex-col">
             <CardHeader>
               <CardTitle className="font-headline text-2xl flex justify-between items-center">
@@ -275,7 +378,7 @@ export default function CashierPOSPage() {
                     </DialogContent>
                 </Dialog>
                 )}
-              <ScrollArea className="h-[250px] md:h-[300px] pr-4 -mr-4">
+              <ScrollArea className="flex-grow h-0 pr-4 -mr-4">
                 {cart.length === 0 ? (
                   <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
                     <p>Your cart is empty</p>
@@ -285,7 +388,7 @@ export default function CashierPOSPage() {
                   <div className="flex flex-col gap-4">
                    <TooltipProvider>
                     {cart.map((item) => {
-                      const price = item.useWholesale ? (item.wholesalePrice || item.price) : item.price;
+                      const price = item.useWholesale && item.wholesalePrice ? item.wholesalePrice : item.price;
                       const hasWholesale = item.wholesalePrice !== undefined && item.wholesalePrice > 0;
                       return (
                       <div key={item.id} className="flex items-center gap-3">
@@ -370,7 +473,7 @@ export default function CashierPOSPage() {
             <CardFooter>
               <Dialog open={isPaymentDialogOpen} onOpenChange={setIsPaymentDialogOpen}>
                 <DialogTrigger asChild>
-                  <Button size="lg" className="w-full text-lg">
+                  <Button size="lg" className="w-full text-lg" disabled={isLoading}>
                     Charge KSH {total.toFixed(2)}
                   </Button>
                 </DialogTrigger>
@@ -394,7 +497,8 @@ export default function CashierPOSPage() {
                           </div>
                         )}
                          
-                        <Button className="w-full" size="lg" onClick={handleCompletePayment} disabled={parseFloat(cashGiven) < total}>
+                        <Button className="w-full" size="lg" onClick={() => handleCompletePayment('Cash')} disabled={parseFloat(cashGiven) < total || isLoading}>
+                          {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>}
                           Confirm Payment
                         </Button>
                       </div>
@@ -402,15 +506,17 @@ export default function CashierPOSPage() {
                      <TabsContent value="card">
                        <div className="space-y-4">
                         <p className="text-center text-muted-foreground">Waiting for card terminal...</p>
-                         <Button className="w-full" size="lg" onClick={handleCompletePayment}>
-                          Confirm Payment
+                         <Button className="w-full" size="lg" onClick={() => handleCompletePayment('Card')} disabled={isLoading}>
+                           {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>}
+                           Confirm Payment
                          </Button>
                       </div>
                     </TabsContent>
                      <TabsContent value="mpesa">
                        <div className="space-y-4">
                         <p className="text-center text-muted-foreground">Send payment request to customer's phone.</p>
-                         <Button className="w-full" size="lg" onClick={handleCompletePayment}>
+                         <Button className="w-full" size="lg" onClick={() => handleCompletePayment('M-Pesa')} disabled={isLoading}>
+                          {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>}
                            Confirm Payment
                          </Button>
                       </div>
@@ -425,5 +531,3 @@ export default function CashierPOSPage() {
       </div>
   );
 }
-
-    
