@@ -1,9 +1,7 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Allow public read and write access to the products collection.
-    // WARNING: You should secure this before deploying to production.
-    match /products/{productId} {
+    match /products/{document=**} {
       allow read, write: if true;
     }
   }
