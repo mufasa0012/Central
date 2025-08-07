@@ -6,7 +6,7 @@ import { collection, addDoc, getDocs, doc, updateDoc, onSnapshot, DocumentData, 
 import { db } from "@/lib/firebase";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { PlusCircle, MoreHorizontal, ImagePlus, Loader2, Trash2, ScanLine } from "lucide-react";
+import { PlusCircle, MoreHorizontal, ImagePlus, Loader2, Trash2, ScanLine, Camera } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -18,6 +18,7 @@ import { uploadImage } from "@/lib/actions";
 import { useToast } from "@/hooks/use-toast";
 import { suggestCategory } from "@/ai/flows/suggest-category-flow";
 import { generateProductImage } from "@/ai/flows/generate-product-image-flow";
+import { recognizeProductFromImage } from "@/ai/flows/recognize-product-flow";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger, } from "@/components/ui/alert-dialog";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 
@@ -65,6 +66,9 @@ export default function InventoryPage() {
   const [isScannerOpen, setIsScannerOpen] = useState(false);
   const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [isRecognizing, setIsRecognizing] = useState(false);
+  const [capturedImage, setCapturedImage] = useState<string | null>(null);
 
 
   useEffect(() => {
@@ -87,7 +91,7 @@ export default function InventoryPage() {
   }, [toast]);
   
   useEffect(() => {
-    if (newProductName.length > 3) {
+    if (newProductName.length > 3 && !isSuggestingCategory) {
       const timer = setTimeout(async () => {
         setIsSuggestingCategory(true);
         try {
@@ -106,7 +110,7 @@ export default function InventoryPage() {
   }, [newProductName]);
 
   useEffect(() => {
-    if (newProductName.length > 3 && newProductBrand.length > 2) {
+    if (newProductName.length > 3 && newProductBrand.length > 2 && !newProductImage) {
       const timer = setTimeout(async () => {
         setIsGeneratingImage(true);
         try {
@@ -132,6 +136,7 @@ export default function InventoryPage() {
             const stream = videoRef.current.srcObject as MediaStream;
             stream.getTracks().forEach(track => track.stop());
         }
+        setCapturedImage(null);
         return;
     }
 
@@ -196,12 +201,13 @@ export default function InventoryPage() {
     
     setIsUploading(true);
     let imageUrl = "https://placehold.co/300x300";
-    let imageFileToUpload = newProductImage;
+    let imageFileToUpload: File | null = newProductImage;
 
-    // If there's a generated image and the user hasn't uploaded a different one, use the generated one.
-    if (generatedImageDataUri && !newProductImage) {
+    // If there's a generated/captured image and the user hasn't uploaded a different one, use it.
+    const imageDataSource = generatedImageDataUri || capturedImage;
+    if (imageDataSource && !newProductImage) {
         try {
-            imageFileToUpload = await dataUriToFile(generatedImageDataUri, `${newProductName.replace(/\s+/g, '-')}.png`);
+            imageFileToUpload = await dataUriToFile(imageDataSource, `${newProductName.replace(/\s+/g, '-')}.png`);
         } catch (error) {
              toast({
                 variant: "destructive",
@@ -353,6 +359,41 @@ export default function InventoryPage() {
     }
   };
 
+  const handleCaptureImage = async () => {
+    if (!videoRef.current || !canvasRef.current) return;
+
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    const context = canvas.getContext('2d');
+    if (context) {
+        context.drawImage(video, 0, 0, canvas.width, canvas.height);
+        const dataUri = canvas.toDataURL('image/png');
+        setCapturedImage(dataUri);
+        setIsRecognizing(true);
+        try {
+            const result = await recognizeProductFromImage({ photoDataUri: dataUri });
+            setNewProductName(result.productName);
+            setNewProductBrand(result.brand);
+            setNewProductCategory(result.category);
+            setNewProductImagePreview(dataUri);
+            setGeneratedImageDataUri(null); // Clear any previously AI-generated image
+            setIsScannerOpen(false);
+            setIsAddDialogOpen(true);
+        } catch (error) {
+            console.error("Error recognizing product:", error);
+            toast({
+                variant: "destructive",
+                title: "Recognition Failed",
+                description: "Could not identify the product from the image.",
+            });
+        } finally {
+            setIsRecognizing(false);
+        }
+    }
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
@@ -370,16 +411,20 @@ export default function InventoryPage() {
               </DialogTrigger>
               <DialogContent className="sm:max-w-md">
                 <DialogHeader>
-                    <DialogTitle>Scan Barcode</DialogTitle>
+                    <DialogTitle>Scan Product</DialogTitle>
                     <DialogDescription>
-                        Position the product's barcode in front of the camera.
+                        Position the product in front of the camera and capture an image.
                     </DialogDescription>
                 </DialogHeader>
-                <div className="relative aspect-video w-full overflow-hidden rounded-md border bg-muted">
+                 <div className="relative aspect-video w-full overflow-hidden rounded-md border bg-muted">
                     <video ref={videoRef} className="h-full w-full object-cover" autoPlay playsInline muted />
-                    <div className="absolute inset-0 flex items-center justify-center">
-                        <div className="w-3/4 h-1/2 border-2 border-destructive rounded-lg" />
-                    </div>
+                    <canvas ref={canvasRef} className="hidden" />
+                    {isRecognizing && (
+                        <div className="absolute inset-0 bg-background/80 flex flex-col items-center justify-center">
+                            <Loader2 className="h-8 w-8 animate-spin text-primary"/>
+                            <p className="text-sm text-muted-foreground mt-2">Recognizing Product...</p>
+                        </div>
+                    )}
                 </div>
                  {hasCameraPermission === false && (
                     <Alert variant="destructive">
@@ -389,11 +434,12 @@ export default function InventoryPage() {
                       </AlertDescription>
                     </Alert>
                 )}
-                <div className="text-center text-sm text-muted-foreground">
-                    Barcode scanning not yet implemented.
-                </div>
                 <DialogFooter>
                     <Button type="button" variant="secondary" onClick={() => setIsScannerOpen(false)}>Close</Button>
+                    <Button type="button" onClick={handleCaptureImage} disabled={!hasCameraPermission || isRecognizing}>
+                        <Camera className="mr-2 h-4 w-4" />
+                        Capture
+                    </Button>
                 </DialogFooter>
               </DialogContent>
             </Dialog>
@@ -636,5 +682,3 @@ export default function InventoryPage() {
     </div>
   );
 }
-
-    
