@@ -17,6 +17,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import type { Product } from "@/lib/data";
 import { loyaltyMembers as initialLoyaltyMembers } from "@/lib/data";
+import { Label } from "@/components/ui/label";
 
 const loyaltyMembers = initialLoyaltyMembers;
 
@@ -30,6 +31,8 @@ export default function CashierPOSPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [customerSearch, setCustomerSearch] = useState("");
   const [activeCustomer, setActiveCustomer] = useState<LoyaltyCustomer | null>(null);
+  const [cashGiven, setCashGiven] = useState("");
+  const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -82,6 +85,7 @@ export default function CashierPOSPage() {
   const clearCart = () => {
     setCart([]);
     setActiveCustomer(null);
+    setCashGiven("");
   }
 
   const filteredProducts = useMemo(() => {
@@ -109,13 +113,30 @@ export default function CashierPOSPage() {
     const totalValue = subtotalValue + taxValue;
     return { subtotal: subtotalValue, tax: taxValue, total: totalValue };
   }, [cart]);
+  
+  const change = useMemo(() => {
+    const cash = parseFloat(cashGiven);
+    if (!cash || cash < total) return 0;
+    return cash - total;
+  }, [cashGiven, total]);
+
+  useEffect(() => {
+    if(!isPaymentDialogOpen) {
+      setCashGiven("");
+    }
+  }, [isPaymentDialogOpen]);
+
+  const handleCompletePayment = () => {
+    toast({ title: "Success", description: "Payment completed." });
+    clearCart();
+    setIsPaymentDialogOpen(false);
+  };
 
   return (
-    <div className="flex flex-col h-full">
-      <h1 className="font-headline text-3xl font-bold tracking-tight mb-4 md:mb-6">Cashier POS</h1>
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start flex-1">
+    <div className="grid h-full grid-cols-1 gap-8 lg:grid-cols-3 items-start">
         {/* Products Section */}
-        <div className="lg:col-span-2 space-y-6">
+        <div className="lg:col-span-2 flex flex-col gap-6 h-full">
+          <h1 className="font-headline text-3xl font-bold tracking-tight">Cashier POS</h1>
           <Card>
             <CardContent className="p-4">
               <div className="relative">
@@ -133,7 +154,7 @@ export default function CashierPOSPage() {
             </CardContent>
           </Card>
 
-          <div className="min-h-[500px] lg:min-h-0">
+          <div className="flex-1 min-h-0">
             {isLoadingProducts ? (
               <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
                 {[...Array(8)].map((_, i) => (
@@ -176,8 +197,8 @@ export default function CashierPOSPage() {
         </div>
 
         {/* Cart Section */}
-        <div className="lg:col-span-1">
-          <Card className="sticky top-8 shadow-lg">
+        <div className="lg:col-span-1 h-full flex flex-col">
+          <Card className="sticky top-8 shadow-lg flex-1 flex flex-col">
             <CardHeader>
               <CardTitle className="font-headline text-2xl flex justify-between items-center">
                 Current Sale
@@ -188,9 +209,9 @@ export default function CashierPOSPage() {
                 )}
               </CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="flex-1 flex flex-col gap-4">
                 {activeCustomer ? (
-                  <div className="bg-accent/20 border border-accent/50 rounded-lg p-3 mb-4 text-sm">
+                  <div className="bg-accent/20 border border-accent/50 rounded-lg p-3 text-sm">
                     <div className="flex justify-between items-center">
                        <p className="font-semibold text-accent-foreground">{activeCustomer.name}</p>
                         <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setActiveCustomer(null)}>
@@ -205,7 +226,7 @@ export default function CashierPOSPage() {
                 ) : (
                 <Dialog>
                     <DialogTrigger asChild>
-                       <Button variant="outline" className="w-full mb-4">
+                       <Button variant="outline" className="w-full">
                         <UserPlus className="mr-2 h-4 w-4"/>
                         Add Loyalty Customer
                       </Button>
@@ -240,7 +261,7 @@ export default function CashierPOSPage() {
                     </DialogContent>
                 </Dialog>
                 )}
-              <ScrollArea className="h-[250px] md:h-[300px] pr-4">
+              <ScrollArea className="h-[250px] md:h-[300px] pr-4 -mr-4">
                 {cart.length === 0 ? (
                   <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
                     <p>Your cart is empty</p>
@@ -299,7 +320,7 @@ export default function CashierPOSPage() {
             </CardContent>
             {cart.length > 0 && (
             <CardFooter>
-              <Dialog onOpenChange={(open) => !open && cart.length === 0}>
+              <Dialog open={isPaymentDialogOpen} onOpenChange={setIsPaymentDialogOpen}>
                 <DialogTrigger asChild>
                   <Button size="lg" className="w-full text-lg">
                     Charge KSH {total.toFixed(2)}
@@ -318,35 +339,61 @@ export default function CashierPOSPage() {
                     <div className="py-4 text-center text-4xl font-bold tracking-tight">KSH {total.toFixed(2)}</div>
                     <TabsContent value="cash">
                       <div className="space-y-4">
-                        <p className="text-center text-muted-foreground">Customer pays with cash.</p>
-                         <DialogClose asChild>
-                           <Button className="w-full" size="lg" onClick={() => {
-                            toast({ title: "Success", description: "Payment completed."});
-                            clearCart();
-                           }}>Confirm Payment</Button>
-                         </DialogClose>
+                        <div className="grid gap-2">
+                           <Label htmlFor="cash-given">Cash Given</Label>
+                           <Input 
+                            id="cash-given" 
+                            type="number" 
+                            placeholder="e.g. 5000" 
+                            value={cashGiven}
+                            onChange={(e) => setCashGiven(e.target.value)}
+                           />
+                        </div>
+                        <div className="flex gap-2">
+                          {[1000, 2000, 5000].map(amount => (
+                            <Button 
+                              key={amount}
+                              variant="secondary"
+                              className="flex-1"
+                              onClick={() => setCashGiven(amount.toString())}
+                             >
+                              {amount}
+                            </Button>
+                          ))}
+                           <Button 
+                              variant="secondary"
+                              className="flex-1"
+                              onClick={() => setCashGiven(Math.ceil(total).toString())}
+                             >
+                              Exact
+                            </Button>
+                        </div>
+                        {change > 0 && (
+                          <div className="text-center text-lg">
+                            <p className="text-muted-foreground">Change due:</p>
+                            <p className="font-bold text-2xl">KSH {change.toFixed(2)}</p>
+                          </div>
+                        )}
+                         
+                        <Button className="w-full" size="lg" onClick={handleCompletePayment}>
+                          Confirm Payment
+                        </Button>
                       </div>
                     </TabsContent>
                      <TabsContent value="card">
                        <div className="space-y-4">
                         <p className="text-center text-muted-foreground">Waiting for card terminal...</p>
-                         <DialogClose asChild>
-                           <Button className="w-full" size="lg" onClick={() => {
-                            toast({ title: "Success", description: "Payment completed."});
-                            clearCart();
-                           }}>Confirm Payment</Button>
-                         </DialogClose>
+                         <Button className="w-full" size="lg" onClick={handleCompletePayment}>
+                          Confirm Payment
+                         </Button>
                       </div>
                     </TabsContent>
                      <TabsContent value="mpesa">
                        <div className="space-y-4">
                         <p className="text-center text-muted-foreground">Send payment request to customer's phone.</p>
-                         <DialogClose asChild>
-                           <Button className="w-full" size="lg" onClick={() => {
-                            toast({ title: "Success", description: "Payment completed."});
-                            clearCart();
-                           }}>Confirm Payment</Button>
-                         </DialogClose>
+                         <Button className="w-full" size="lg" onClick={handleCompletePayment}>
+                           Confirm Payment
+                         </Button>
                       </div>
                     </TabsContent>
                   </Tabs>
@@ -357,8 +404,5 @@ export default function CashierPOSPage() {
           </Card>
         </div>
       </div>
-    </div>
   );
 }
-
-    
