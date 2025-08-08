@@ -1,4 +1,5 @@
 
+
 export type Product = { 
   id: string; 
   name: string; 
@@ -42,6 +43,15 @@ export type Sale = {
     };
     createdAt: Date;
 };
+
+export type Expense = {
+  id: string;
+  name: string;
+  category: string;
+  amount: number;
+  date: Date;
+};
+
 
 // This file is now primarily for type definitions.
 // The data is fetched from Firestore in the respective pages.
