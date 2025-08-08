@@ -7,14 +7,18 @@ import { db } from "@/lib/firebase";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import type { Product, Sale } from "@/lib/data";
+import type { Product, Sale, SaleItem } from "@/lib/data";
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { ChartContainer, ChartTooltipContent } from '@/components/ui/chart';
-import { DollarSign, Package, ShoppingCart, Loader2 } from 'lucide-react';
+import { DollarSign, Package, ShoppingCart, Loader2, TrendingUp, PackageX } from 'lucide-react';
+import Image from 'next/image';
 
 
 const formatDateForChart = (date: Date) => {
-    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
+    // Split the date to avoid timezone issues between server and client
+    const [year, month, day] = date.toISOString().split('T')[0].split('-');
+    const utcDate = new Date(Date.UTC(Number(year), Number(month) - 1, Number(day)));
+    return utcDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
 }
 
 
@@ -77,6 +81,33 @@ export default function ReportsPage() {
       total: dailySales[date]
     })).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
   }, [sales]);
+
+  const topSellingProducts = useMemo(() => {
+    const productSales: { [key: string]: { name: string; brand: string; quantity: number, image: string } } = {};
+
+    sales.forEach(sale => {
+        sale.items.forEach(item => {
+            if (!productSales[item.productId]) {
+                const product = products.find(p => p.id === item.productId);
+                productSales[item.productId] = { 
+                    name: item.name, 
+                    brand: item.brand, 
+                    quantity: 0,
+                    image: product?.image || 'https://placehold.co/64x64'
+                };
+            }
+            productSales[item.productId].quantity += item.quantity;
+        });
+    });
+
+    return Object.values(productSales)
+        .sort((a, b) => b.quantity - a.quantity)
+        .slice(0, 5);
+  }, [sales, products]);
+
+  const outOfStockProducts = useMemo(() => {
+      return products.filter(product => product.stock <= 0).slice(0, 5);
+  }, [products]);
 
 
   return (
@@ -180,7 +211,7 @@ export default function ReportsPage() {
                       <TableRow key={sale.id}>
                         <TableCell>
                           <div className="font-medium">{sale.customer.name}</div>
-                          <div className="text-sm text-muted-foreground">{sale.createdAt?.toLocaleDateString()}</div>
+                          <div className="text-sm text-muted-foreground">{sale.createdAt?.toLocaleDateString('en-CA')}</div>
                         </TableCell>
                         <TableCell className="text-right">
                           <Badge variant={sale.status === 'Paid' ? 'secondary' : 'destructive'} className="mr-2">{sale.status}</Badge>
@@ -194,8 +225,72 @@ export default function ReportsPage() {
           </CardContent>
         </Card>
       </div>
+
+      <div className="grid gap-4 md:grid-cols-2">
+        <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Top Selling Products</CardTitle>
+                <TrendingUp className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+                 <Table>
+                    <TableBody>
+                        {topSellingProducts.map((product, index) => (
+                            <TableRow key={index}>
+                                <TableCell>
+                                    <Image src={product.image} alt={product.name} width={40} height={40} className="rounded-md" />
+                                </TableCell>
+                                <TableCell>
+                                    <p className="font-medium">{product.name}</p>
+                                    <p className="text-xs text-muted-foreground">{product.brand}</p>
+                                </TableCell>
+                                <TableCell className="text-right">
+                                    <p className="font-bold">{product.quantity}</p>
+                                    <p className="text-xs text-muted-foreground">units sold</p>
+                                </TableCell>
+                            </TableRow>
+                        ))}
+                    </TableBody>
+                 </Table>
+            </CardContent>
+        </Card>
+        <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Products Out of Stock</CardTitle>
+                <PackageX className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+                 <Table>
+                    <TableBody>
+                         {outOfStockProducts.length > 0 ? outOfStockProducts.map((product) => (
+                            <TableRow key={product.id}>
+                                <TableCell>
+                                     <Image src={product.image} alt={product.name} width={40} height={40} className="rounded-md" />
+                                </TableCell>
+                                <TableCell>
+                                    <p className="font-medium">{product.name}</p>
+                                    <p className="text-xs text-muted-foreground">{product.brand}</p>
+                                </TableCell>
+                                <TableCell className="text-right">
+                                    <Badge variant="destructive">Out of Stock</Badge>
+                                </TableCell>
+                            </TableRow>
+                        )) : (
+                            <TableRow>
+                                <TableCell colSpan={3} className="text-center text-muted-foreground">
+                                    All products are in stock.
+                                </TableCell>
+                            </TableRow>
+                        )}
+                    </TableBody>
+                 </Table>
+            </CardContent>
+        </Card>
+      </div>
+
       </>
       )}
     </div>
   );
 }
+
