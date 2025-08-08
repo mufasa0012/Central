@@ -177,56 +177,67 @@ export default function CashierPOSPage() {
     setIsLoading(true);
     try {
         await runTransaction(db, async (transaction) => {
-            const saleItems = cart.map(item => {
+            // 1. All READ operations first
+            const productRefs = cart.map(item => doc(db, "products", item.id));
+            const productDocs = await Promise.all(productRefs.map(ref => transaction.get(ref)));
+            
+            let loyaltyDoc;
+            let loyaltyRef;
+            if (activeCustomer) {
+                loyaltyRef = doc(db, "loyaltyMembers", activeCustomer.id);
+                loyaltyDoc = await transaction.get(loyaltyRef);
+                if (!loyaltyDoc.exists()) {
+                    throw new Error(`Loyalty member ${activeCustomer.name} not found.`);
+                }
+            }
+
+            // 2. All business logic and validation
+            const saleItems = cart.map((item, index) => {
                 const price = item.useWholesale && item.wholesalePrice ? item.wholesalePrice : item.price;
+                
+                const productDoc = productDocs[index];
+                if (!productDoc.exists()) {
+                    throw new Error(`Product ${item.name} not found.`);
+                }
+                const newStock = productDoc.data().stock - item.quantity;
+                if (newStock < 0) {
+                    throw new Error(`Not enough stock for ${item.name}. Only ${productDoc.data().stock} available.`);
+                }
+
                 return {
                     productId: item.id,
                     name: item.name,
                     brand: item.brand,
                     quantity: item.quantity,
                     price: price,
-                    total: price * item.quantity
-                }
+                    total: price * item.quantity,
+                    newStock: newStock,
+                };
             });
 
-            // 1. Decrement stock for each product
-            for (const item of cart) {
-                const productRef = doc(db, "products", item.id);
-                const productDoc = await transaction.get(productRef);
-                if (!productDoc.exists()) {
-                    throw new Error(`Product ${item.name} not found.`);
-                }
-                const newStock = productDoc.data().stock - item.quantity;
-                if (newStock < 0) {
-                    throw new Error(`Not enough stock for ${item.name}.`);
-                }
-                transaction.update(productRef, { stock: newStock });
-            }
+            // 3. All WRITE operations last
+            // 3a. Update product stock
+            saleItems.forEach((item, index) => {
+                transaction.update(productRefs[index], { stock: item.newStock });
+            });
             
-            // 2. Handle loyalty points and debt
-            if (activeCustomer) {
-                const loyaltyRef = doc(db, "loyaltyMembers", activeCustomer.id);
-                const loyaltyDoc = await transaction.get(loyaltyRef);
-                 if (!loyaltyDoc.exists()) {
-                    throw new Error(`Loyalty member ${activeCustomer.name} not found.`);
-                }
-                
+            // 3b. Update loyalty points or debt
+            if (activeCustomer && loyaltyRef && loyaltyDoc) {
                 if (paymentMethod === 'On Credit') {
                     const currentDebt = loyaltyDoc.data().debt || 0;
                     const newDebt = currentDebt + total;
                     transaction.update(loyaltyRef, { debt: newDebt });
                 } else {
-                    // Award 1 point for every KSH 100 spent on paid transactions
                     const pointsEarned = Math.floor(total / 100);
                     const newPoints = (loyaltyDoc.data().points || 0) + pointsEarned;
                     transaction.update(loyaltyRef, { points: newPoints });
                 }
             }
 
-            // 3. Create a new sale record
+            // 3c. Create a new sale record
             const salesCollection = collection(db, "sales");
             transaction.set(doc(salesCollection), {
-                items: saleItems,
+                items: saleItems.map(({ newStock, ...rest }) => rest), // Don't save newStock in the sale doc
                 subtotal,
                 total,
                 paymentMethod,
