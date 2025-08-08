@@ -1,9 +1,10 @@
+
 "use client";
 
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { Sidebar, SidebarHeader, SidebarContent, SidebarMenu, SidebarMenuItem, SidebarMenuButton } from '@/components/ui/sidebar';
-import { LayoutGrid, Boxes, BarChart3, Banknote, Settings, Award, ShoppingCart } from 'lucide-react';
+import { LayoutGrid, Boxes, BarChart3, Banknote, Settings, Award, ShoppingCart, Building } from 'lucide-react';
 
 export function AppShell() {
   const pathname = usePathname();
@@ -21,6 +22,11 @@ export function AppShell() {
           <SidebarMenuItem>
             <SidebarMenuButton href="/" tooltip="POS" asChild isActive={pathname === '/'}>
               <Link href="/"><LayoutGrid /><span>POS</span></Link>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+          <SidebarMenuItem>
+            <SidebarMenuButton href="/wholesale" tooltip="Wholesale" asChild isActive={pathname === '/wholesale'}>
+              <Link href="/wholesale"><Building /><span>Wholesale</span></Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
            <SidebarMenuItem>
