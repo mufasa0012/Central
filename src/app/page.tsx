@@ -173,10 +173,9 @@ export default function CashierPOSPage() {
     }
   }, [isPaymentDialogOpen]);
 
-  const handleCompletePayment = async (paymentMethod: 'Cash' | 'Card' | 'M-Pesa') => {
+  const handleCompletePayment = async (paymentMethod: 'Cash' | 'Card' | 'M-Pesa' | 'On Credit') => {
     setIsLoading(true);
     try {
-        // Use a transaction to ensure atomic updates
         await runTransaction(db, async (transaction) => {
             const saleItems = cart.map(item => {
                 const price = item.useWholesale && item.wholesalePrice ? item.wholesalePrice : item.price;
@@ -204,18 +203,24 @@ export default function CashierPOSPage() {
                 transaction.update(productRef, { stock: newStock });
             }
             
-            // 2. Add loyalty points if a customer is selected
-            let newPoints = 0;
+            // 2. Handle loyalty points and debt
             if (activeCustomer) {
                 const loyaltyRef = doc(db, "loyaltyMembers", activeCustomer.id);
                 const loyaltyDoc = await transaction.get(loyaltyRef);
                  if (!loyaltyDoc.exists()) {
                     throw new Error(`Loyalty member ${activeCustomer.name} not found.`);
                 }
-                // Award 1 point for every KSH 100 spent
-                const pointsEarned = Math.floor(total / 100);
-                newPoints = loyaltyDoc.data().points + pointsEarned;
-                transaction.update(loyaltyRef, { points: newPoints });
+                
+                if (paymentMethod === 'On Credit') {
+                    const currentDebt = loyaltyDoc.data().debt || 0;
+                    const newDebt = currentDebt + total;
+                    transaction.update(loyaltyRef, { debt: newDebt });
+                } else {
+                    // Award 1 point for every KSH 100 spent on paid transactions
+                    const pointsEarned = Math.floor(total / 100);
+                    const newPoints = (loyaltyDoc.data().points || 0) + pointsEarned;
+                    transaction.update(loyaltyRef, { points: newPoints });
+                }
             }
 
             // 3. Create a new sale record
@@ -225,7 +230,7 @@ export default function CashierPOSPage() {
                 subtotal,
                 total,
                 paymentMethod,
-                status: 'Paid',
+                status: paymentMethod === 'On Credit' ? 'Unpaid' : 'Paid',
                 customer: activeCustomer ? { id: activeCustomer.id, name: activeCustomer.name } : { id: 'Walk-in', name: 'Walk-in' },
                 createdAt: serverTimestamp()
             });
@@ -335,9 +340,15 @@ export default function CashierPOSPage() {
                            <X className="h-4 w-4 text-muted-foreground"/>
                         </Button>
                     </div>
-                    <div className="flex items-center gap-2 text-muted-foreground">
-                      <Award className="h-4 w-4 text-accent" />
-                      <span>{activeCustomer.points.toLocaleString()} points</span>
+                    <div className="flex items-center justify-between text-muted-foreground">
+                        <div className="flex items-center gap-2">
+                            <Award className="h-4 w-4 text-accent" />
+                            <span>{(activeCustomer.points || 0).toLocaleString()} points</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-destructive">
+                            <CreditCard className="h-4 w-4" />
+                            <span>KSH {(activeCustomer.debt || 0).toFixed(2)} debt</span>
+                        </div>
                     </div>
                   </div>
                 ) : (
@@ -522,6 +533,21 @@ export default function CashierPOSPage() {
                       </div>
                     </TabsContent>
                   </Tabs>
+                   {activeCustomer && (
+                    <>
+                      <Separator className="my-4" />
+                      <Button 
+                        variant="destructive" 
+                        className="w-full" 
+                        size="lg" 
+                        onClick={() => handleCompletePayment('On Credit')} 
+                        disabled={isLoading}
+                      >
+                         {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>}
+                         Charge to {activeCustomer.name}'s Account
+                       </Button>
+                    </>
+                   )}
                 </DialogContent>
               </Dialog>
             </CardFooter>

@@ -67,6 +67,7 @@ export default function LoyaltyPage() {
         email: newMemberEmail,
         phone: newMemberPhone,
         points: 0,
+        debt: 0,
       };
       await addDoc(collection(db, "loyaltyMembers"), newMember);
       toast({
@@ -148,6 +149,7 @@ export default function LoyaltyPage() {
               </div>
             </div>
             <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>Cancel</Button>
               <Button type="submit" onClick={handleAddMember} disabled={isSaving}>
                 {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>}
                 Save Member
@@ -176,6 +178,7 @@ export default function LoyaltyPage() {
                   <TableHead className="hidden sm:table-cell">Phone</TableHead>
                   <TableHead className="hidden sm:table-cell">Email</TableHead>
                   <TableHead className="text-right">Loyalty Points</TableHead>
+                  <TableHead className="text-right">Debt</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -186,7 +189,12 @@ export default function LoyaltyPage() {
                     <TableCell className="hidden sm:table-cell">{member.phone}</TableCell>
                     <TableCell className="hidden sm:table-cell">{member.email}</TableCell>
                     <TableCell className="text-right">
-                      <Badge variant="secondary">{member.points.toLocaleString()}</Badge>
+                      <Badge variant="secondary">{(member.points || 0).toLocaleString()}</Badge>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Badge variant={member.debt > 0 ? "destructive" : "outline"}>
+                        KSH {(member.debt || 0).toFixed(2)}
+                      </Badge>
                     </TableCell>
                   </TableRow>
                 ))}

@@ -32,6 +32,19 @@ export default function SalesPage() {
         return () => unsubscribe();
     }, []);
 
+  const getStatusVariant = (status: string) => {
+    switch (status) {
+        case 'Paid':
+            return 'secondary';
+        case 'Unpaid':
+            return 'destructive';
+        case 'Refunded':
+            return 'outline';
+        default:
+            return 'default';
+    }
+  }
+
   return (
     <div className="space-y-6">
       <div className="space-y-1">
@@ -69,7 +82,7 @@ export default function SalesPage() {
                     <TableCell className="hidden sm:table-cell">{sale.createdAt?.toLocaleString()}</TableCell>
                     <TableCell className="hidden sm:table-cell">{sale.paymentMethod}</TableCell>
                     <TableCell className="hidden sm:table-cell text-center">
-                       <Badge variant={sale.status === 'Paid' ? 'secondary' : 'destructive'}>{sale.status}</Badge>
+                       <Badge variant={getStatusVariant(sale.status)}>{sale.status}</Badge>
                     </TableCell>
                     <TableCell className="text-right">KSH {sale.total.toFixed(2)}</TableCell>
                   </TableRow>

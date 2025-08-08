@@ -19,6 +19,7 @@ export type LoyaltyMember = {
   email: string;
   phone: string;
   points: number;
+  debt: number;
 };
 
 export type SaleItem = {
@@ -35,8 +36,8 @@ export type Sale = {
     items: SaleItem[];
     subtotal: number;
     total: number;
-    paymentMethod: 'Cash' | 'Card' | 'M-Pesa';
-    status: 'Paid' | 'Refunded';
+    paymentMethod: 'Cash' | 'Card' | 'M-Pesa' | 'On Credit';
+    status: 'Paid' | 'Refunded' | 'Unpaid';
     customer: {
         id: string;
         name: string;
