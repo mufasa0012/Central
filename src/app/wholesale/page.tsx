@@ -568,3 +568,5 @@ export default function WholesalePOSPage() {
       </div>
   );
 }
+
+    
