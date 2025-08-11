@@ -29,7 +29,7 @@ export default function LoginPage() {
         } catch (error: any) {
             let description = "An unknown error occurred.";
             if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
-                description = "Invalid email or password. Please try again.";
+                description = "The email or password you entered is incorrect. Please check your credentials and try again.";
             }
             toast({
                 variant: "destructive",
